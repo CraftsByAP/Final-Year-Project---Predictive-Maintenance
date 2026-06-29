@@ -1,0 +1,88 @@
+<!DOCTYPE html> 
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InfraSight Dashboard</title>
+    <link rel="stylesheet" href ="styles.css">
+</head>
+<body>
+    <header>
+        <div>
+            <h1>InfraSight Dashboard</h1>
+            <p id="headerSub">Bridge Infrastructure</p>
+        </div>
+        <div>
+            <button id="bridgeNav ">
+                Bridges
+            </button>
+            <div>
+                <span></span>
+                Live Feed
+            </div>
+            <div>
+                Updates-> <span id = "lastUpdate">==</span>
+            </div>
+        </div>
+
+    </header>
+    <section id ="bridgeView">
+        <div id="gridBridge"></div>
+    </section>
+    <section id ="viewDetail">
+        <div>
+            <button id="backBridges">
+                Back to Bridges 
+            </button>
+        </div>
+        <div>
+            <h2 id ="detailName">==</h2>
+            <p id="detailMeta">==</p>
+        </div>
+        <!--Sensor Data Cards-->
+        <div>
+            <div id ="cardDeflection">
+                <p>Deflection * Mid-Span</p>
+                <p id ="valDeflection">==</p>
+                <p id = "limitDeflection">==</p>
+            </div>
+            <div id ="cardCrack">
+                <p>Crack Width * Pier 2</p>
+                <p id ="valCrack">==</p>
+                <span id = "badgeCrack">==</span>
+            </div>
+            <div id ="cardStrain">
+                <p>Fatigue Index * Girder 3</p>
+                <p id ="valStrain">==</p>
+                <p id ="bridgeStrain"></p>
+            </div>
+            <div id ="cardTemp">
+                <p>Thermal Gradient * Deck</p>
+                <p id = "valTemp">==</p>
+                <span id = "badgeTemp">==</span>
+            </div>
+            
+        </div>
+        <!--Charts-->
+        <div>
+            <select id ="sensorSelect">
+            <option value="deflection">Deflection</option>
+            <option value="crack">Crack Width</option>
+            <option value="strain">Fatigue Index</option>
+            <option value="temp">Thermal Gradient</option>
+            </select>
+            <canvas id ="trendChart"></canvas>
+        </div>
+        <!--Queuesing-->
+        <div>
+            <h3>Maintenance Queue</h3>
+            <div id ="maintenanceQueue"></div>
+        </div>
+    </section>
+    <footer>
+        Data Source: City Infrastructure Department | Dashboard by InfraSight &copy; 2024
+    </footer>
+    <script src = "script.js"></script>
+
+</body>
+</html>
