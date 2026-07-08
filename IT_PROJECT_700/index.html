@@ -6,42 +6,71 @@
     <title>InfraSight Dashboard</title>
     <link rel="stylesheet" href ="cstyles.css">
 </head>
-<body>
-    <header>
+<body class ="bg-[#0a0f17] text-slate-200 min-h-screen">
+    <div id="loadingOverlay" class = "fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0a0f17]"></div>
+    <div class = "loader"></div>
+        <div class="central"></div>
+            <div class = "external-shadow"></div>
+                <div class = "intern"></div>            
+    </div>
+    <p class="mt-8 text-sm text-slate-400 tracking-widest uppercase">InfraSight Dashboard</p>
+    <p class="mt-1 text-xs text-slate-600">Connecting to Sensors...</p>
+</div>
+<!-- Main Content -->
+ <div i="mainPage" class="p-4 md:p-8" style="opacity:0; transition: opacity 0.5s ease;"></div>
+ <!--Header-->
+    <header class="flex flex-col md:flex-row md:items-end md:justify-between mb-6 gap-3">        
         <div>
-            <h1>InfraSight Dashboard</h1>
-            <p id="headerSub">Bridge Infrastructure</p>
+            <h1 class="text-xl md:text-2xl font-semibold text-white tracking-tight">InfraSight Dashboard</h1>
+            <p id="headerSub" class="text-sm text-slate-400 mt-1">Bridge Infrastructure</p>
         </div>
-        <div>
-            <button id="bridgeNav">
+        <div class="flex items-center gap-3">
+            <button id="bridgeNav" class="text-sm px-4 py-1.5 rounded-lg bg-gradient-to-r from-accent to-blue-600 text-white font-medium hover:from-blue-500 hover:to-blue-700 transition-all duration-300 shadow-lg shadow-accent/20">
                 Bridges
             </button>
-            <div>
-                <span></span>
+            <div class="flex items-center gap-2 text-good text-sm">
+                <span class = "relative flex h-2.5 w-2.5"></span>
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-good opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-good"></span>
                 Live Feed
             </div>
-            <div>
+            <div class="text-slate-400 text-sm">
                 Updates-> <span id = "lastUpdate">==</span>
             </div>
         </div>
 
     </header>
-    <section id ="bridgeView">
-        <div id="gridBridge"></div>
+    <!--Bridge View-->
+    <section id ="bridgeView" class="view active">
+        <div id="gridBridge" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
     </section>
-    <section id ="viewDetail" style="display:none;">
-        <div>
-            <button id="backBridges">
-                Back to Bridges 
+    <!--Bridge Detail View-->
+    <section id ="viewDetail" class="view">
+        <div class="mb-4">
+            <button id="backBridges" class="text-sm px-3 py-1.5 rounded-md bg-surface border border-edge text-slate-300 hover:bg-panel transition-colors">
+                &larr;Back to Bridges 
             </button>
         </div>
-        <div>
-            <h2 id ="detailName">==</h2>
-            <p id="detailMeta">==</p>
+        <div class="mb-5">
+            <h2 id ="detailName"class="text-lg font-semibold text-white">==</h2>
+            <p id="detailMeta" class="text-lg font-semibold text-white">==</p>
         </div>
         <!--Sensor Data Cards-->
-        <div>
-            <div id ="cardDeflection">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            <div id ="cardDeflection" class="sensor-card">
+                <div class="card-glow"></div>
+                <div class="card-inner"></div>
+                <div class="card-content">
+                    <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                    <div class="flex h-7 w-7 items-center justify-center rounded-lg  bg-gradient-to-br from-accent to-blue-600"></div>
+                    <svg class="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"  d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                    </svg>
+                </div>
+
+
+
                 <p>Deflection * Mid-Span</p>
                 <p id ="valDeflection">==</p>
                 <p id = "limitDeflection">==</p>

@@ -2,10 +2,10 @@
 body{
     font-family :-apple-system,BlinkMacSystemFont,"Segoe UI", Roboto,sans-serif;
 }
-.glow-crit{
+.glow-critical{
     box-shadow: 0 0 0 1px red, 0 0 0 2px red, 0 0 0 3px red, 0 0 0 4px red, 0 0 0 5px red;
 }
-.glow-warn{
+.glow-warning{
     box-shadow: 0 0 0 1px yellow, 0 0 0 2px yellow, 0 0 0 3px yellow, 0 0 0 4px yellow, 0 0 0 5px yellow;
  }
  ::-webkit-scrollbar{
@@ -26,3 +26,121 @@ body{
  .nav-btn{
     transition:background-color 0.15s ease;
  }
+ .loader{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    cursor: default;
+    scale: 1;
+  }
+  .central {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    width: 10em;
+    height: 10em;
+    border-radius: 50%;
+    box-shadow: 0.5em 1em 1em cyan,
+      -0.5em 0.5em 1em lime,
+       0.5em -0.5em 1em white,
+      -0.5em -0.5em 1em yellow;
+  }
+  .external-shadow {
+    width: 10em;
+    height: 10em;
+    height: 10em;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    box-shadow: 0.5em 0.5em 3em cyan,
+      -0.5em 0.5em 3em lime,
+       0.5em -0.5em 3em white,
+      -0.5em -0.5em 3em yellow;
+    z-index: 999;
+    animation: rotate 3s linear infinite;
+    background-color: #0a0f17;
+  }
+  .intern {
+    position: absolute;
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    z-index: 9999;
+  }
+  .intern::before {
+    content: "Loading...";
+    animation: loadingText 2.5s ease-in-out infinite;
+  }
+  @keyframes rotate {
+    0%   { transform: rotate(0deg); }
+    50%  { transform: rotate(180deg); }
+    100% { transform: rotate(360deg); }
+  }
+  @keyframes loadingText {
+    0%   { content: 'Connecting...'; }
+    33%  { content: 'Reading sensors...'; }
+    66%  { content: 'Building feed...'; }
+    100% { content: 'Almost ready...'; }
+  }
+  #loadingOverlay {
+    transition: opacity 0.5s ease;
+  }
+  #loadingOverlay.fade-out {
+    opacity: 0;
+    pointer-events: none;
+  }
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+  }
+  .status-badge .badge-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    animation: badgePulse 2s ease-in-out infinite;
+  }
+  @keyframes badgePulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+  }
+  /* GOOD */
+  .status-badge.badge-good {
+    background: rgba(46,158,111,0.12);
+    color: #2e9e6f;
+    border-color: rgba(46,158,111,0.3);
+  }
+  .status-badge.badge-good .badge-dot { background: #2e9e6f; }
+  /* WARNING */
+  .status-badge.badge-warn {
+    background: rgba(224,163,65,0.12);
+    color: #e0a341;
+    border-color: rgba(224,163,65,0.3);
+  }
+  .status-badge.badge-warn .badge-dot { background: #e0a341; }
+  /* CRITICAL */
+  .status-badge.badge-crit {
+    background: rgba(224,82,74,0.12);
+    color: #e0524a;
+    border-color: rgba(224,82,74,0.4);
+    box-shadow: 0 0 8px rgba(224,82,74,0.2);
+  }
+  .status-badge.badge-crit .badge-dot {
+    background: #e0524a;
+    animation: badgePulseCrit 1s ease-in-out infinite;
+  }
+  @keyframes badgePulseCrit {
+    0%, 100% { opacity: 1; box-shadow: 0 0 4px #e0524a; }
+    50%       { opacity: 0.5; box-shadow: none; }
+  }
