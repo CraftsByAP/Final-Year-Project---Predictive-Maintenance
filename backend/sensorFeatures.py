@@ -2,8 +2,8 @@ from collections import deque
 from sensorSIm import SCALES
 
 WINDOW = 30
-FEATURES = ['deflectionRatio ', 'crackRatio' , 'strainRatio' , 'tempRatio'
-            'meanDeflection','meanCrack','meanStrain','meanTemp']
+FEATURES = ['currentDeflectionRatio','currentCrackRatio','currentStrainRatio','currentThermalRatio',
+            'meanDeflectionRatio','meanCrackRatio','meanStrainRatio','meanThermalRatio']
 
 class featureWindow:
     def __init__(self):
