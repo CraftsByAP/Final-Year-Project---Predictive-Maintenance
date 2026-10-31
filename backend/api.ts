@@ -1,15 +1,10 @@
 import { Database } from "bun:sqlite";
 import { resolve } from "node:path";
 import { validateFrame, saveFrame } from "./frameStore";
+import { initializeAuth, handleAuthRequest } from "./authRoutes";
+import { getSessionUser, hasValidCsrf } from "./sessions";
 
-//Locate Database
-const databasePath = resolve(
-    import.meta.dir,
-    "..",
-    "data",
-    "PMSB.db"
-);
-// Open the database
+const databasePath = resolve(import.meta.dir, "..", "data", "PMSB.db");
 const database = new Database(databasePath, {
     readwrite: true,
     create: false
@@ -17,207 +12,182 @@ const database = new Database(databasePath, {
 
 database.exec("PRAGMA foreign_keys = ON");
 database.exec("PRAGMA busy_timeout = 5000");
+initializeAuth(database);
+
+async function routeRequest(request: Request, clientIp: string) {
+    const requestUrl = new URL(request.url);
+    const path = requestUrl.pathname;
+
+    if (path === "/" && request.method === "GET") {
+        return Response.redirect(new URL("/api/health", request.url), 302);
+    }
+
+    const authResponse = await handleAuthRequest(database, request, clientIp);
+    if (authResponse !== null) {
+        return authResponse;
+    }
+
+    if (path === "/api/health" && request.method === "GET") {
+        database.query("SELECT 1").get();
+        return Response.json({
+            status: "ok",
+            application: "PMSB",
+            backend: "Bun",
+            database: "connected"
+        });
+    }
+
+    // Machine access uses WORKER_SECRET, not a human login cookie.
+    if (path === "/api/frames" && request.method === "POST") {
+        const workerSecret = process.env.WORKER_SECRET;
+        if (!workerSecret || workerSecret.length < 32) {
+            return Response.json({ error: "Worker access has not been configured" }, { status: 503 });
+        }
+        if (request.headers.get("Authorization") !== "Bearer " + workerSecret) {
+            return Response.json({ error: "Worker access denied" }, { status: 401 });
+        }
+
+        const contentType = request.headers.get("Content-Type");
+        if (contentType === null || !contentType.startsWith("application/json")) {
+            return Response.json({ error: "Send the frame as application/json" }, { status: 415 });
+        }
+
+        let frame;
+        try {
+            frame = await request.json();
+        } catch {
+            return Response.json({ error: "The request contains invalid JSON" }, { status: 400 });
+        }
+
+        const validationError = validateFrame(frame);
+        if (validationError !== null) {
+            return Response.json({ error: validationError }, { status: 400 });
+        }
+
+        const existingFrame = database.query(`
+            SELECT frameId FROM frames
+            WHERE runId = ? AND bridgeId = ? AND step = ?
+        `).get(frame.runId, frame.bridgeId, frame.step);
+
+        if (existingFrame !== null) {
+            return Response.json({ error: "This frame has already been saved" }, { status: 409 });
+        }
+
+        const frameId = saveFrame(database, frame);
+        return Response.json({ saved: true, frameId: frameId }, { status: 201 });
+    }
+
+    // Every remaining API route needs a human session.
+    if (!path.startsWith("/api/")) {
+        return Response.json({ error: "Endpoint not found" }, { status: 404 });
+    }
+
+    const user = getSessionUser(database, request);
+    if (user === null) {
+        return Response.json({ error: "Please log in" }, { status: 401 });
+    }
+
+    // Admin-only information must not be available to employees.
+    if (path.startsWith("/api/admin/") && user.role !== "superAdmin") {
+        return Response.json({ error: "Super admin access required" }, { status: 403 });
+    }
+
+    if (request.method !== "GET") {
+        if (user.role === "employee") {
+            return Response.json({ error: "Employees have read-only access" }, { status: 403 });
+        }
+        if (!hasValidCsrf(request, user)) {
+            return Response.json({ error: "Invalid request token" }, { status: 403 });
+        }
+        // Add specific approved write routes here as we build them.
+        return Response.json({ error: "This action is not available" }, { status: 405 });
+    }
+
+    if (path === "/api/admin/users") {
+        const users = database.query(`
+            SELECT userId, username, email, role, isActive, createdAt
+            FROM users ORDER BY userId
+        `).all();
+        return Response.json({ users: users });
+    }
+
+    if (path === "/api/readings") {
+        let bridgeId = requestUrl.searchParams.get("bridgeId");
+        if (bridgeId === null) {
+            bridgeId = "bridge1";
+        }
+        if (bridgeId.trim() === "" || bridgeId.length > 100) {
+            return Response.json({ error: "bridgeId must contain 1 to 100 characters" }, { status: 400 });
+        }
+
+        let limitText = requestUrl.searchParams.get("limit");
+        if (limitText === null) {
+            limitText = "60";
+        }
+        const limit = Number(limitText);
+        if (!Number.isInteger(limit) || limit < 1 || limit > 1000) {
+            return Response.json({ error: "limit must be a whole number from 1 to 1000" }, { status: 400 });
+        }
+
+        const readings = database.query(`
+            SELECT
+                frames.frameId, frames.runId, frames.bridgeId,
+                frames.step, frames.scenario, frames.recordedAt,
+                frames.simulatedHour, readings.sensorName,
+                readings.value, readings.unit
+            FROM frames
+            JOIN readings ON readings.frameId = frames.frameId
+            WHERE frames.frameId IN (
+                SELECT frameId FROM frames
+                WHERE bridgeId = ? ORDER BY frameId DESC LIMIT ?
+            )
+            ORDER BY frames.frameId ASC, readings.readingId ASC
+        `).all(bridgeId, limit);
+
+        return Response.json({
+            bridgeId: bridgeId,
+            frameLimit: limit,
+            readingCount: readings.length,
+            readings: readings
+        });
+    }
+
+    return Response.json({ error: "Endpoint not found" }, { status: 404 });
+}
 
 const server = Bun.serve({
     hostname: "127.0.0.1",
-    port: 3000,
+    port: Number(process.env.PORT || 3000),
     maxRequestBodySize: 65536,
 
-    async fetch(request) {
-        const requestUrl = new URL(request.url);
-        const path = requestUrl.pathname;
-        if (path === "/") {
-    return Response.redirect(
-        new URL("/api/readings?limit=3", request.url),
-        302
-    );
-}
+    async fetch(request, server) {
+        const address = server.requestIP(request);
+        let clientIp = "local";
+        if (address !== null) {
+            clientIp = address.address;
+        }
 
+        let response;
         try {
-            if (
-    path === "/api/frames" &&
-    request.method === "POST"
-) {
-    const workerSecret = process.env.WORKER_SECRET;
-
-    if (!workerSecret || workerSecret.length < 32) {
-        return Response.json(
-            { error: "Worker access has not been configured" },
-            { status: 503 }
-        );
-    }
-
-    const expectedAuthorization = "Bearer " + workerSecret;
-    const authorization = request.headers.get("Authorization");
-
-    if (authorization !== expectedAuthorization) {
-        return Response.json(
-            { error: "Worker access denied" },
-            { status: 401 }
-        );
-    }
-
-    const contentType = request.headers.get("Content-Type");
-
-    if (
-        contentType === null ||
-        !contentType.startsWith("application/json")
-    ) {
-        return Response.json(
-            { error: "Send the frame as application/json" },
-            { status: 415 }
-        );
-    }
-
-    let frame;
-
-    try {
-        frame = await request.json();
-    } catch {
-        return Response.json(
-            { error: "The request contains invalid JSON" },
-            { status: 400 }
-        );
-    }
-
-    const validationError = validateFrame(frame);
-
-    if (validationError !== null) {
-        return Response.json(
-            { error: validationError },
-            { status: 400 }
-        );
-    }
-
-    const existingFrame = database.query(`
-        SELECT frameId
-        FROM frames
-        WHERE runId = ? AND bridgeId = ? AND step = ?
-    `).get(frame.runId, frame.bridgeId, frame.step);
-
-    if (existingFrame !== null) {
-        return Response.json(
-            { error: "This frame has already been saved" },
-            { status: 409 }
-        );
-    }
-
-    const frameId = saveFrame(database, frame);
-
-    return Response.json(
-        {
-            saved: true,
-            frameId: frameId
-        },
-        { status: 201 }
-    );
-}
-
-            if (request.method !== "GET") {
-                return Response.json(
-                    { error: "Only GET requests are supported" },
-                    {
-                        status: 405,
-                        headers: { Allow: "GET" }
-                    }
-                );
-            }
-
-            if (path === "/api/health") {
-                database.query("SELECT 1").get();
-
-                return Response.json({
-                    status: "ok",
-                    application: "PMBS",
-                    backend: "Bun",
-                    database: "connected"
-                });
-            }
-
-            if (path === "/api/readings") {
-                let bridgeId = requestUrl.searchParams.get("bridgeId");
-
-                if (bridgeId === null) {
-                    bridgeId = "bridge1";
-                }
-
-                if (bridgeId.trim() === "") {
-                    return Response.json(
-                        { error: "bridgeId must not be empty" },
-                        { status: 400 }
-                    );
-                }
-
-                let limitText = requestUrl.searchParams.get("limit");
-
-                if (limitText === null) {
-                    limitText = "60";
-                }
-
-                const limit = Number(limitText);
-
-                if (
-                    !Number.isInteger(limit) ||
-                    limit < 1 ||
-                    limit > 1000
-                ) {
-                    return Response.json(
-                        { error: "limit must be a whole number from 1 to 1000" },
-                        { status: 400 }
-                    );
-                }
-
-                const query = database.query(`
-                    SELECT
-                        frames.frameId,
-                        frames.runId,
-                        frames.bridgeId,
-                        frames.step,
-                        frames.scenario,
-                        frames.recordedAt,
-                        frames.simulatedHour,
-                        readings.sensorName,
-                        readings.value,
-                        readings.unit
-                    FROM frames
-                    JOIN readings
-                        ON readings.frameId = frames.frameId
-                    WHERE frames.frameId IN (
-                        SELECT frameId
-                        FROM frames
-                        WHERE bridgeId = ?
-                        ORDER BY frameId DESC
-                        LIMIT ?
-                    )
-                    ORDER BY
-                        frames.frameId ASC,
-                        readings.readingId ASC
-                `);
-
-                const readings = query.all(bridgeId, limit);
-
-                return Response.json({
-                    bridgeId: bridgeId,
-                    frameLimit: limit,
-                    readingCount: readings.length,
-                    readings: readings
-                });
-            }
-
-            return Response.json(
-                { error: "Endpoint not found" },
-                { status: 404 }
-            );
-
+            response = await routeRequest(request, clientIp);
         } catch (error) {
             console.error("API request failed:", error);
-
-            return Response.json(
-                { error: "The server could not complete the request" },
-                { status: 500 }
-            );
+            response = Response.json({ error: "The server could not complete the request" }, { status: 500 });
         }
+
+        response.headers.set("Cache-Control", "no-store");
+        response.headers.set("X-Content-Type-Options", "nosniff");
+        return response;
     }
 });
 
 console.log("PMSB API running at:", server.url.href);
+
+function stopServer() {
+    server.stop(true);
+    database.close();
+    process.exit(0);
+}
+
+process.on("SIGINT", stopServer);
+process.on("SIGTERM", stopServer);
