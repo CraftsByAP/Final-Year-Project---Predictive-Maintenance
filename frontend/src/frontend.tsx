@@ -9,12 +9,22 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 
-const elem = document.getElementById("root")!;
-const app = (
-  <StrictMode>
+const element = document.getElementById("root");
+if (element === null) {
+    throw new Error("The page needs a root element");
+}
+
+const application = (<StrictMode>
     <App />
-  </StrictMode>
+</StrictMode>
 );
 
-// https://bun.com/docs/bundler/hot-reloading#import-meta-hot-data
-(import.meta.hot.data.root ??= createRoot(elem)).render(app);
+// Reusing React root when Bun refreshes a module during development.
+if (import.meta.hot) {
+    if (!import.meta.hot.data.root) {
+        import.meta.hot.data.root = createRoot(element);
+    }
+    import.meta.hot.data.root.render(application);
+} else {
+    createRoot(element).render(application);
+}
