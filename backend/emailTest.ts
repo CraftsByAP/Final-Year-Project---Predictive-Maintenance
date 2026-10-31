@@ -2,7 +2,7 @@ import { randomInt } from "node:crypto";
 import { sendVerificationEmail } from "./email";
 
 async function main() {
-    const enteredEmail = prompt("Send a test code to which email address?");
+    const enteredEmail = prompt("Send a Code to which email address?");
 
     if (enteredEmail === null || enteredEmail.trim() === "") {
         console.log("No email address entered.");
