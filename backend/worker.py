@@ -6,10 +6,40 @@ from sensorSIm import SensorSimulation, SCENARIOS
 from sensorFeatures import featureWindow, thresholdForecast
 import json
 import uuid
-from db import createDatabase, saveFrame
+import os
+from urllib.request import Request, urlopen
+from dotenv import load_dotenv
 
+def sendFrame(frameData, workerSecret):
+    frameJson = json.dumps(
+        frameData,
+        allow_nan=False
+    ).encode('utf-8')
 
+    request = Request(
+        'http://127.0.0.1:3000/api/frames',
+        data=frameJson,
+        headers={
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + workerSecret
+        },
+        method='POST'
+    )
+
+    with urlopen(request, timeout=5) as response:
+        responseText = response.read().decode('utf-8')
+
+    return json.loads(responseText)
 def main():
+    envPath = Path(__file__).resolve().parent / '.env'
+    load_dotenv(envPath)
+
+    workerSecret = os.environ.get('WORKER_SECRET')
+
+    if workerSecret is None or len(workerSecret) < 32:
+        print('Configure WORKER_SECRET in backend/.env first.')
+        return
+
     # Find the model saved by trainModel.py.
     projectFolder = Path(__file__).resolve().parent.parent
     modelPath = projectFolder / 'models' / 'anomaly.joblib'
@@ -28,7 +58,6 @@ def main():
     print('Trained model loaded.')
     print('Detection cutoff:', cutoff)
 
-    createDatabase()
 
     # Give this execution its own ID.
     runId = str(uuid.uuid4())
@@ -168,24 +197,27 @@ def main():
                 )
 
         # All four sensors are processed. Save the complete frame.
-        frameId = saveFrame(
-            runId=runId,
-            step=step,
-            scenario=scenario,
-            readings=readings,
-            modelVersion=modelVersion,
-            modelScore=modelScore,
-            isAnomaly=isAnomaly,
-            forecasts=frameForecasts
-        )
+        frameData = {
+            'runId': runId,
+            'bridgeId': 'bridge1',
+            'step': step,
+            'scenario': scenario,
+            'readings': readings,
+            'modelVersion': modelVersion,
+            'modelScore': modelScore,
+            'isAnomaly': isAnomaly,
+            'forecasts': frameForecasts
+        }
 
-        print('Saved frame:', frameId)
+        try:
+            result = sendFrame(frameData, workerSecret)
+        except Exception as error:
+            print('Could not confirm that the frame was saved:', error)
+            print('Stopping monitoring. Check the Bun API.')
+            break
 
-        if step < totalSteps:
-            time.sleep(intervalSeconds)
-
-    print('\nMonitoring complete.')
-
+        frameId = result['frameId']
+        print('Saved through Bun API. Frame:', frameId)
 
 if __name__ == '__main__':
     try:

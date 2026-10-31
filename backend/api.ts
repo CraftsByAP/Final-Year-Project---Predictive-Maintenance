@@ -1,3 +1,4 @@
+import dashboard from "../frontend/src/index.html";
 import { Database } from "bun:sqlite";
 import { resolve } from "node:path";
 import { validateFrame, saveFrame } from "./frameStore";
@@ -17,10 +18,6 @@ initializeAuth(database);
 async function routeRequest(request: Request, clientIp: string) {
     const requestUrl = new URL(request.url);
     const path = requestUrl.pathname;
-
-    if (path === "/" && request.method === "GET") {
-        return Response.redirect(new URL("/api/health", request.url), 302);
-    }
 
     const authResponse = await handleAuthRequest(database, request, clientIp);
     if (authResponse !== null) {
@@ -159,6 +156,17 @@ const server = Bun.serve({
     hostname: "127.0.0.1",
     port: Number(process.env.PORT || 3000),
     maxRequestBodySize: 65536,
+    idleTimeout: 60,
+
+    // Bun bundles the existing React frontend and serves it with the API.
+    routes: {
+        "/": dashboard
+    },
+
+    development: process.env.NODE_ENV !== "production" && {
+        hmr: true,
+        console: false
+    },
 
     async fetch(request, server) {
         const address = server.requestIP(request);
