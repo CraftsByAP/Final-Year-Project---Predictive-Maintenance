@@ -40,7 +40,7 @@ def main():
         print('Configure WORKER_SECRET in backend/.env first.')
         return
 
-    # Find the model saved by trainModel.py.
+
     projectFolder = Path(__file__).resolve().parent.parent
     modelPath = projectFolder / 'models' / 'anomaly.joblib'
 
@@ -50,7 +50,7 @@ def main():
         print('Run trainModel.py successfully first.')
         return
 
-    # Load the saved model and detection cutoff
+    # Loading the saved model and detection cutoff
     savedData = joblib.load(modelPath)
     model = savedData['model']
     cutoff = savedData['cutoff']
@@ -59,7 +59,7 @@ def main():
     print('Detection cutoff:', cutoff)
 
 
-    # Give this execution its own ID.
+    # Giving execution its own ID.
     runId = str(uuid.uuid4())
 
     metadataPath = projectFolder / 'models' / 'metadata.json'
@@ -69,7 +69,20 @@ def main():
 
     modelVersion = metadata['version']
 
-    # Let the user choose the simulation scenario.
+    bridgeProfiles = {
+        'bridge1': {'seed': 300, 'span': 20.0},
+        'bridge2': {'seed': 301, 'span': 34.0},
+        'bridge3': {'seed': 302, 'span': 48.0}
+    }
+
+    print('\nAvailable bridges: bridge1, bridge2, bridge3')
+    bridgeId = input('Enter a bridge ID: ').strip()
+    if bridgeId not in bridgeProfiles:
+        print('Unknown bridge. Choose bridge1, bridge2 or bridge3.')
+        return
+    bridgeProfile = bridgeProfiles[bridgeId]
+
+    # simulation scenario...
     print('\nAvailable scenarios:')
 
     for scenarioName in SCENARIOS:
@@ -80,7 +93,7 @@ def main():
     if scenario not in SCENARIOS:
         print('Unknown scenario. Use a name from the list above.')
         return
-    simulation = SensorSimulation(seed=300, span=20.0)
+    simulation = SensorSimulation(seed=bridgeProfile['seed'], span=bridgeProfile['span'])
     window = featureWindow()
 
     sensorNames = [
@@ -109,25 +122,36 @@ def main():
         sampleHistory.append(sensorHistory)
 
     intervalSeconds = 2
-    totalSteps = 90
+    # Fault demonstration: 30 normal frames for a baseline.
+    warmupSteps = 0
+    if scenario != 'normal':
+        warmupSteps = 30
+    totalSteps = 90 + warmupSteps
 
     print('\nStarting monitoring.')
     print('One step represents one simulated hour.')
 
     for step in range(1, totalSteps + 1):
-        readings = simulation.values(step, scenario)
+        activeScenario = scenario
+        scenarioStep = step
+        if step <= warmupSteps:
+            activeScenario = 'normal'
+        else:
+            scenarioStep = step - warmupSteps
+        readings = simulation.values(scenarioStep, activeScenario)
         features = window.add(readings)
 
         modelScore = None
         isAnomaly = None
         frameForecasts = []
 
-        print('\n----------------------------------------')
+        print('\n------------------------------------------------------------------------------')
+        print('Bridge:', bridgeId)
         print('Step:', step)
-        print('Scenario:', scenario)
+        print('Scenario:', activeScenario)
         print('Simulated hour:', step)
 
-        # Analyse the complete frame after the window fills.
+        # Analysing complete Frame after the window fills.
         if features is None:
             print('Model warming up:', step, '/ 30')
         else:
@@ -143,7 +167,7 @@ def main():
 
             print('Model score:', round(modelScore, 5))
 
-        # Process all four sensors.
+        # Processing 4 sensors
         for sensorIndex in range(4):
             sensorName = sensorNames[sensorIndex]
             sensorUnit = sensorUnits[sensorIndex]
@@ -179,7 +203,7 @@ def main():
                 critical
             )
 
-            # Add the forecast AFTER calculating it.
+            # Adding forecast after calculation
             frameForecasts.append(forecast)
 
             if forecast['Availability'] == 'Available':
@@ -196,12 +220,12 @@ def main():
                     forecast['Reason']
                 )
 
-        # All four sensors are processed. Save the complete frame.
+        # sensors processed...saving Complete frame.
         frameData = {
             'runId': runId,
-            'bridgeId': 'bridge1',
+            'bridgeId': bridgeId,
             'step': step,
-            'scenario': scenario,
+            'scenario': activeScenario,
             'readings': readings,
             'modelVersion': modelVersion,
             'modelScore': modelScore,
@@ -218,6 +242,10 @@ def main():
 
         frameId = result['frameId']
         print('Saved through Bun API. Frame:', frameId)
+
+        # Pausing after saving
+        if step < totalSteps:
+            time.sleep(intervalSeconds)
 
 if __name__ == '__main__':
     try:

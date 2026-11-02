@@ -1,0 +1,107 @@
+.bridgeControls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.bridgeControls label {
+    color: #ADA5BC;
+    font-size: 12px;
+}
+.bridgeControls select {
+    max-width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+}
+.trendGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    margin-bottom: 28px;
+}
+.trendCard {
+    min-width: 0;
+    padding: 20px;
+    background: #1D1828;
+    border: 1px solid #393044;
+    border-radius: 16px;
+}
+.trendHeading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.trendHeading h3 {
+    margin: 0;
+    font-size: 15px;
+    color: #F5F1FC;
+}
+.trendHeading > span {
+    font: 12px "IBM Plex Mono", monospace;
+    color: #C6AFF0;
+}
+.sensorChart { width: 100%;
+    height: auto;
+    display: block;
+    margin-top: 12px;
+    overflow: visible;
+}
+.chartGridLine {
+    stroke: #393044;
+    stroke-width: 1;
+}
+.chartTick, .chartAxisLabel {
+    fill: #ADA5BC;
+    font: 11px Inter, sans-serif;
+}
+.chartReading {
+    fill: none;
+    stroke: #C6AFF0;
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+}
+.chartEnd {
+    fill: #E4FF3B;
+}
+.chartWarning {
+    stroke: #F5C76B;
+    stroke-width: 1.5;
+    stroke-dasharray: 8 5;
+}
+.chartCritical {
+    stroke: #FF8BA5;
+    stroke-width: 1.5;
+    stroke-dasharray: 2 4;
+}
+.chartLegend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 11px;
+    color: #C6AFF0;
+    margin: 8px 0;
+}
+.chartLegend span:nth-child(2) {
+    color: #F5C76B;
+}
+.chartLegend span:nth-child(3) {
+    color: #FF8BA5;
+}
+.chartNote, .chartEmpty {
+    font-size: 11px;
+    line-height: 1.6;
+    color: #ADA5BC;
+}
+.chartEmpty {
+    min-height: 190px;
+    display: grid;
+    place-items: center;
+    text-align: center;
+}
+@media (max-width: 1000px) {
+    .trendGrid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
