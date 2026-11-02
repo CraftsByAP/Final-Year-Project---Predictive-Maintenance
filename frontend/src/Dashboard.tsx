@@ -1,4 +1,10 @@
+import { ReportsPanel } from "./ReportsPanel";
+import { BackupsPanel } from "./BackupsPanel";
+import { MaintenancePanel } from "./MaintenancePanel";
 import { useEffect, useRef, useState } from "react";
+import { AnalysisPanel } from "./AnalysisPanel";
+import { SensorChart } from "./SensorChart";
+import "./monitoring.css";
 import { BridgeMark } from "./AuthLayout";
 import { errorMessage, requestApi } from "./apiClient";
 import { roleLabel, type Account, type Reading, type UserRow } from "./types";
@@ -43,7 +49,19 @@ function sensorLabel(sensorName: string) {
 }
 
 export function Dashboard(props: DashboardProps) {
-    const { user, onLogout, onSessionExpired, loggingOut, accountError } = props;
+    const [bridgeId, setBridgeId] = useState("bridge1");
+    // A new key resets cached readings before showing a different bridge.
+    return <DashboardView key={bridgeId} {...props} bridgeId={bridgeId} onBridgeChange={setBridgeId} />;
+}
+
+type BridgeProps = DashboardProps & {
+    bridgeId: string;
+    onBridgeChange: (bridgeId: string) => void;
+};
+
+function DashboardView(props: BridgeProps) {
+    const { user, onLogout, onSessionExpired, loggingOut, accountError, bridgeId, onBridgeChange } = props;
+    const bridgeNumber = bridgeId.slice(-1);
     const [activeTab, setActiveTab] = useState("overview");
     const [readings, setReadings] = useState<Reading[]>([]);
     const [users, setUsers] = useState<UserRow[]>([]);
@@ -67,7 +85,7 @@ export function Dashboard(props: DashboardProps) {
         setRefreshing(true);
 
         try {
-            const result = await requestApi("/api/readings?bridgeId=bridge1&limit=60");
+            const result = await requestApi("/api/readings?bridgeId=" + encodeURIComponent(bridgeId) + "&limit=60");
             if (result.status === 401) {
                 onSessionExpired();
                 return;
@@ -200,6 +218,11 @@ export function Dashboard(props: DashboardProps) {
         );
     }
 
+    const sensorCharts = [];
+    for (const sensor of sensorDefinitions) {
+        sensorCharts.push(<SensorChart key={sensor.name} readings={readings} sensor={sensor} bridgeId={bridgeId} />);
+    }
+
     const matchingRows = [];
     for (const reading of readings) {
         if (selectedSensor === "all" || reading.sensorName === selectedSensor) {
@@ -252,8 +275,11 @@ export function Dashboard(props: DashboardProps) {
                         onClick={function () { setActiveTab("overview"); }}><span>01</span>Overview</button>
                     <button className={activeTab === "history" ? "navActive" : ""} aria-current={activeTab === "history" ? "page" : undefined}
                         onClick={function () { setActiveTab("history"); }}><span>02</span>Saved readings</button>
+                    <button className={activeTab === "maintenance" ? "navActive" : ""} onClick={function () { setActiveTab("maintenance"); }}><span>03</span>Maintenance</button>
+                    {(user.role === "admin" || user.role === "superAdmin") && <button className={activeTab === "reports" ? "navActive" : ""} onClick={function () { setActiveTab("reports"); }}><span>04</span>Reports</button>}
+                    {user.role === "superAdmin" && <button className={activeTab === "backups" ? "navActive" : ""} onClick={function () { setActiveTab("backups"); }}><span>05</span>Backups</button>}
                     {user.role === "superAdmin" && <button className={activeTab === "accounts" ? "navActive" : ""} aria-current={activeTab === "accounts" ? "page" : undefined}
-                        onClick={openAccounts}><span>03</span>Accounts</button>}
+                        onClick={openAccounts}><span>06</span>Accounts</button>}
                 </nav>
                 <div className="sidebarBottom">
                     <span className="sidebarAvatar">{user.username.slice(0, 1).toUpperCase()}</span>
@@ -263,14 +289,14 @@ export function Dashboard(props: DashboardProps) {
 
             <main className="dashboardMain">
                 <header className="dashboardHeader">
-                    <div><span className="eyebrow">MONITORING WORKSPACE</span><h1>{activeTab === "accounts" ? "Team accounts" : activeTab === "history" ? "Saved readings" : "Bridge overview"}</h1></div>
+                    <div><span className="eyebrow">MONITORING WORKSPACE</span><h1>{activeTab === "reports" ? "Reports" : activeTab === "backups" ? "Database backups" : activeTab === "maintenance" ? "Maintenance tasks" : activeTab === "accounts" ? "Team accounts" : activeTab === "history" ? "Saved readings" : "Bridge overview"}</h1></div>
                     <div className="headerActions"><span className={"statusPill " + feedClass}><span className="smallDot" />{feedLabel}</span><button className="secondaryButton" onClick={onLogout} disabled={loggingOut}>{loggingOut ? "Signing out…" : "Sign out"}</button></div>
                 </header>
 
                 <div className="simulationNotice"><span className="noticeIcon">i</span><p><strong>Simulation environment.</strong> Readings are synthetic and limits are demonstration values. One step represents one simulated hour.</p></div>
                 {accountError !== "" && <div className="errorBanner" role="alert">{accountError}</div>}
 
-                {activeTab === "accounts" ? (
+                {activeTab === "reports" ? <ReportsPanel onSessionExpired={onSessionExpired} /> : activeTab === "backups" ? <BackupsPanel onSessionExpired={onSessionExpired} /> : activeTab === "maintenance" ? <MaintenancePanel user={user} onSessionExpired={onSessionExpired} /> : activeTab === "accounts" ? (
                     <section className="dataPanel">
                         <div className="panelHeading"><div><h2>Authorised accounts</h2><p>Account roles and registered email addresses.</p></div><span className="statusPill neutral">Super admin only</span></div>
                         {usersError !== "" && <div className="panelError" role="alert">{usersError}</div>}
@@ -278,18 +304,21 @@ export function Dashboard(props: DashboardProps) {
                     </section>
                 ) : (
                     <>
-                        <section className="bridgeHeading"><div><span className="bridgeTag">BRIDGE 01</span><h2>Bridge 1 <span>Demonstration profile</span></h2><p>{latestReading === null ? "No sensor frame received yet." : "Last frame recorded " + readableDate(latestReading.recordedAt)}</p></div><button className="secondaryButton" onClick={refreshReadings} disabled={refreshing}>{refreshing ? "Refreshing…" : "Refresh data"}</button></section>
+                        <section className="bridgeHeading"><div><span className="bridgeTag">BRIDGE 0{bridgeNumber}</span><h2>Bridge {bridgeNumber} <span>Demonstration profile</span></h2><p>{latestReading === null ? "No sensor frame received yet." : "Last frame recorded " + readableDate(latestReading.recordedAt)}</p></div><div className="bridgeControls"><label htmlFor="bridgeChoice">Bridge</label><select id="bridgeChoice" value={bridgeId} onChange={function (event) { onBridgeChange(event.target.value); }}><option value="bridge1">Bridge 1 · 20 m demo</option><option value="bridge2">Bridge 2 · 34 m demo</option><option value="bridge3">Bridge 3 · 48 m demo</option></select><button className="secondaryButton" onClick={refreshReadings} disabled={refreshing}>{refreshing ? "Refreshing…" : "Refresh data"}</button></div></section>
                         {readingsError !== "" && <div className="errorBanner" role="alert">{readingsError} Existing values, if shown, are cached readings.</div>}
 
                         {activeTab === "overview" && <>
                             <section className="summaryStrip" aria-label="Monitoring summary">
-                                <div><span>Bridge profile</span><strong>01</strong></div>
+                                <div><span>Bridge profile</span><strong>0{bridgeNumber}</strong></div>
                                 <div><span>Frames in view</span><strong>{frameIds.size.toString().padStart(2, "0")}</strong></div>
                                 <div><span>Sensor channels</span><strong>04</strong></div>
                                 <div><span>Latest scenario</span><strong className="scenarioSummary">{latestReading === null ? "Waiting" : scenarioLabel(latestReading.scenario)}</strong></div>
                             </section>
                             <div className="sectionLabel"><h2>Latest sensor readings</h2><span>Values at the last recorded frame</span></div>
                             <section className="sensorGrid" aria-label="Sensor readings">{sensorCards}</section>
+                            <div className="sectionLabel"><h2>Sensor trends</h2><span>Latest run only · up to 60 stored frames</span></div>
+                            <section className="trendGrid" aria-label="Sensor trend graphs">{sensorCharts}</section>
+                            <AnalysisPanel readings={readings} />
                         </>}
 
                         <section className="dataPanel">
@@ -299,7 +328,7 @@ export function Dashboard(props: DashboardProps) {
                         </section>
                     </>
                 )}
-                <footer className="dashboardFoot"><span>PMSB · Predictive bridge maintenance</span><span>Authorised access · {roleLabel(user.role)}</span></footer>
+                <footer className="dashboardFoot"><span>||~INFRASIGHT~||</span><span>Authorised access · {roleLabel(user.role)}</span></footer>
             </main>
         </div>
     );

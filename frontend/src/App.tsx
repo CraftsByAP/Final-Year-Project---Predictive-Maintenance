@@ -4,6 +4,11 @@ import { Dashboard } from "./Dashboard";
 import { errorMessage, requestApi } from "./apiClient";
 import type { Account } from "./types";
 import "./index.css";
+import "@fontsource/inter/latin-400.css";
+import "@fontsource/inter/latin-600.css";
+import "@fontsource/space-grotesk/latin-500.css";
+import "@fontsource/space-grotesk/latin-700.css";
+import "@fontsource/ibm-plex-mono/latin-400.css";
 
 export function App() {
     const [screen, setScreen] = useState("loading");
@@ -185,7 +190,7 @@ export function App() {
                 <div className="loadingState" role="status">
                     <span className="spinner" />
                     <h2>Checking your session</h2>
-                    <p>Connecting to PMSB…</p>
+                    <p>Connecting to InfraSight…</p>
                 </div>
             ) : (
                 <>
@@ -256,7 +261,7 @@ export function App() {
                                 onClick={function () { setError(""); returnToLogin(); }}>
                                 Back to sign in
                             </button>
-                            <p className="formNote">Check your junk folder too. To request another code, sign in again. A 60-second resend cooldown applies.</p>
+                            <p className="formNote">Check your Junk folder .To request another code, sign in again.</p>
                         </form>
                     )}
                 </>
@@ -268,4 +273,3 @@ export function App() {
 export default App;
 
 
-export default App;

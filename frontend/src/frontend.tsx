@@ -14,12 +14,13 @@ if (element === null) {
     throw new Error("The page needs a root element");
 }
 
-const application = (<StrictMode>
-    <App />
-</StrictMode>
+const application = (
+    <StrictMode>
+        <App />
+    </StrictMode>
 );
 
-// Reusing React root when Bun refreshes a module during development.
+// Reuse React root when Bun refreshes a module during Dev
 if (import.meta.hot) {
     if (!import.meta.hot.data.root) {
         import.meta.hot.data.root = createRoot(element);

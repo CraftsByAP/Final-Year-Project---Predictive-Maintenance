@@ -1,3 +1,6 @@
+import { handleReportRequest } from "./reportRoutes";
+import { handleBackupRequest } from "./backupRoutes";
+import { initializeMaintenance, handleMaintenanceRequest } from "./maintenanceRoutes";
 import dashboard from "../frontend/src/index.html";
 import { Database } from "bun:sqlite";
 import { resolve } from "node:path";
@@ -14,6 +17,7 @@ const database = new Database(databasePath, {
 database.exec("PRAGMA foreign_keys = ON");
 database.exec("PRAGMA busy_timeout = 5000");
 initializeAuth(database);
+initializeMaintenance(database);
 
 async function routeRequest(request: Request, clientIp: string) {
     const requestUrl = new URL(request.url);
@@ -84,6 +88,14 @@ async function routeRequest(request: Request, clientIp: string) {
         return Response.json({ error: "Please log in" }, { status: 401 });
     }
 
+    const maintenanceResponse = await handleMaintenanceRequest(database, request);
+    if (maintenanceResponse !== null) return maintenanceResponse;
+
+    const reportResponse = await handleReportRequest(database, request);
+    if (reportResponse !== null) return reportResponse;
+    const backupResponse = await handleBackupRequest(database, request, resolve(import.meta.dir, "..", "data"));
+    if (backupResponse !== null) return backupResponse;
+
     // Admin-only information must not be available to employees.
     if (path.startsWith("/api/admin/") && user.role !== "superAdmin") {
         return Response.json({ error: "Super admin access required" }, { status: 403 });
@@ -131,9 +143,17 @@ async function routeRequest(request: Request, clientIp: string) {
                 frames.frameId, frames.runId, frames.bridgeId,
                 frames.step, frames.scenario, frames.recordedAt,
                 frames.simulatedHour, readings.sensorName,
-                readings.value, readings.unit
+                readings.value, readings.unit,
+                predictions.modelVersion, predictions.modelScore,
+                predictions.isAnomaly,
+                predictions.availability AS predictionAvailability,
+                forecasts.availability AS forecastAvailability,
+                forecasts.hoursToThreshold, forecasts.fitScore,
+                forecasts.reason AS forecastReason
             FROM frames
             JOIN readings ON readings.frameId = frames.frameId
+            LEFT JOIN predictions ON predictions.frameId = frames.frameId
+            LEFT JOIN forecasts ON forecasts.readingId = readings.readingId
             WHERE frames.frameId IN (
                 SELECT frameId FROM frames
                 WHERE bridgeId = ? ORDER BY frameId DESC LIMIT ?

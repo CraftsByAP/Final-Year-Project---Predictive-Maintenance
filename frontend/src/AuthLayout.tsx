@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+//import { GradientBackdrop } from "./GradientBackdrop";
 
 export function BridgeMark() {
     return (
@@ -13,15 +14,16 @@ export function BridgeMark() {
 export function AuthLayout({ children }: { children: ReactNode }) {
     return (
         <main className="authPage">
-            <section className="authStory" aria-label="About PMSB">
-                <a className="brand brandLight" href="/" aria-label="PMSB home">
+            <section className="authStory" aria-label="About InfraSight">
+
+                <a className="brand brandLight" href="/" aria-label="Home">
                     <span className="brandSymbol"><BridgeMark /></span>
                     <span>PMSB<span className="brandCaption">BRIDGE MAINTENANCE</span></span>
                 </a>
 
                 <div className="storyContent">
                     <span className="eyebrow lightEyebrow">PREDICTIVE MAINTENANCE</span>
-                    <h1>A clearer view.<br />An earlier response.</h1>
+                    <h1>Better,Faster...<br />Proactive.</h1>
                     <p>Bring bridge readings into focus and give your maintenance team the information it needs.</p>
 
                     <div className="bridgeDrawing">
