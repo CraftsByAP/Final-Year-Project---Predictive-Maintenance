@@ -1,0 +1,119 @@
+.maintenanceModule > .panelHeading {
+    padding: 16px 0;
+}
+.taskForm, .maintenanceTask {
+    background: #1D1828;
+    color: #DDE3E8;
+    border: 1px solid #393044;
+    border-radius: 16px;
+    padding: 24px;
+    margin: 16px 0;
+}
+.taskForm h3, .maintenanceTask h3 {
+
+    color: #F5F1FC;
+    margin: 0 0 16px;
+}
+.taskForm fieldset {
+    padding: 0;
+    margin: 0;
+    border: 0;
+     min-width: 0;
+}
+.taskForm label {
+    display: block;
+    color: #C2B8D2;
+     font-size: 12px;
+    margin: 14px 0 8px;
+}
+.taskForm input, .taskForm select, .taskForm textarea {
+
+    width: 100%;
+    padding: 12px;
+    color: #DDE3E8;
+    background: #15111E;
+    border: 1px solid #51465F;
+    border-radius: 8px;
+    font: inherit;}
+.taskForm textarea {
+    resize: vertical; }
+.taskForm textarea:focus-visible {
+    outline: 2px solid #E4FF3B;
+    outline-offset: 3px;
+
+}
+.taskFormGrid, .maintenanceGrid {
+    display: grid;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 16px;
+}
+.taskActions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.taskActions .primaryButton {
+    width: auto;
+    margin: 0;
+}
+.taskHeading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center; gap: 12px;
+    margin-bottom: 16px;
+    color: #ADA5BC;
+    font-size: 12px;
+}
+.taskPriority {
+    border-radius: 99px;
+    padding: 5px 10px;
+    background: #ADA5BC18;
+
+}
+.priorityCritical {
+    color: #FF8BA5;
+    background: #FF8BA518;
+}
+.priorityHigh {
+    color: #F5C76B;
+    background: #F5C76B18;
+}
+.priorityMedium {
+    color: #C6AFF0;
+    background: #9B7ED618;
+}
+.priorityLow, .taskSuccess {
+    color: #80E5C7; }
+.taskDescription {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-size: 13px; line-height: 1.7;
+    color: #ADA5BC;
+
+}
+.maintenanceTask h3 {
+    overflow-wrap: anywhere;
+}
+.maintenanceTask dl {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+.maintenanceTask dt {
+    font-size: 11px;
+    color: #ADA5BC;
+}
+.maintenanceTask dd {
+    margin: 5px 0;
+    font-size: 13px;
+}
+@media(max-width:800px) {
+    .taskFormGrid, .maintenanceGrid {
+        grid-template-columns: minmax(0,1fr);
+
+    }
+
+
+}
