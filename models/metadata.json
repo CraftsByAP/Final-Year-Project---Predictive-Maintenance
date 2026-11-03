@@ -1,0 +1,28 @@
+{
+  "version": "isolation-forest-demo-v1-21672bd0f4da",
+  "algorithm": "IsolationForest",
+  "features": [
+    "currentDeflectionRatio",
+    "currentCrackRatio",
+    "currentStrainRatio",
+    "currentThermalRatio",
+    "meanDeflectionRatio",
+    "meanCrackRatio",
+    "meanStrainRatio",
+    "meanThermalRatio"
+  ],
+  "window": 30,
+  "seed": 42,
+  "cutoff": 0.04,
+  "sklearnVersion": "1.9.1",
+  "numpyVersion": "2.5.4",
+  "sha256": "21672bd0f4daf8306313bd1cf4948d7e0c873c7805c0b109f57ddbefe0590495",
+  "training": "40 normal runs; validation and test use distinct seeds and runs",
+  "scoreConvention": "decision_function; anomaly if rawScore < cutoff",
+  "generatorVersion": "demo-d1-v1",
+  "datasetCounts": {
+    "train": 2440,
+    "validation": 2928,
+    "test": 4392
+  }
+}
