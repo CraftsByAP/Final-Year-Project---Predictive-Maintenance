@@ -37,7 +37,7 @@ async function setPasswords() {
 
         if (existingUser === null) {
             console.log("Account not found:", username);
-            console.log("Run setupAccounts.ts to create it first.");
+            console.log("Run accountSetup.ts to create it first.");
             continue;
         }
 
