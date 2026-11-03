@@ -1,4 +1,5 @@
 import { Database } from "bun:sqlite";
+import { getPermissions } from "./permissions";
 import { createHash, randomBytes } from "node:crypto";
 
 export type SessionUser = {
@@ -6,6 +7,7 @@ export type SessionUser = {
     username: string;
     email: string | null;
     role: string;
+    permissions: string[];
     csrfToken: string;
     expiresAt: string;
 };
@@ -52,7 +54,7 @@ function makeCookie(request: Request, token: string, maxAge: number) {
 // Call only after password AND OTP verification succeed. Generates random token and saves only hash
 export function createSession(database: Database, userId: number, request: Request) {
     const account = database.query(`
-        SELECT userId FROM users WHERE userId = ? AND isActive = 1
+        SELECT userId FROM users WHERE userId = ? AND isActive = 1 AND emailVerifiedAt IS NOT NULL
     `).get(userId);
 
     if (account === null) {
@@ -89,7 +91,7 @@ export function getSessionUser(database: Database, request: Request) {
             sessions.csrfToken, sessions.expiresAt
         FROM sessions
         JOIN users ON users.userId = sessions.userId
-        WHERE sessions.tokenHash = ? AND users.isActive = 1
+        WHERE sessions.tokenHash = ? AND users.isActive = 1 AND users.emailVerifiedAt IS NOT NULL
     `).get(hashToken(token)) as SessionUser | null;
 
     if (user === null) {
@@ -102,9 +104,7 @@ export function getSessionUser(database: Database, request: Request) {
         return null;
     }
 
-    if (user.role !== "superAdmin" && user.role !== "admin" && user.role !== "employee") {
-        return null;
-    }
+    user.permissions = getPermissions(database, user.role);
     return user;
 }
 

@@ -1,3 +1,6 @@
+import { accountsReady } from "./migrateAccounts";
+import { handleAccountRequest } from "./accountRoutes";
+import { hasPermission } from "./permissions";
 import { handleReportRequest } from "./reportRoutes";
 import { handleBackupRequest } from "./backupRoutes";
 import { initializeMaintenance, handleMaintenanceRequest } from "./maintenanceRoutes";
@@ -6,7 +9,7 @@ import { Database } from "bun:sqlite";
 import { resolve } from "node:path";
 import { validateFrame, saveFrame } from "./frameStore";
 import { initializeAuth, handleAuthRequest } from "./authRoutes";
-import { getSessionUser, hasValidCsrf } from "./sessions";
+import { getSessionUser } from "./sessions";
 
 const databasePath = resolve(import.meta.dir, "..", "data", "PMSB.db");
 const database = new Database(databasePath, {
@@ -16,6 +19,10 @@ const database = new Database(databasePath, {
 
 database.exec("PRAGMA foreign_keys = ON");
 database.exec("PRAGMA busy_timeout = 5000");
+if (!accountsReady(database)) {
+    database.close();
+    throw new Error("Stop the API and worker, then run: bun run migrateAccounts.ts");
+}
 initializeAuth(database);
 initializeMaintenance(database);
 
@@ -38,7 +45,7 @@ async function routeRequest(request: Request, clientIp: string) {
         });
     }
 
-    // Machine access uses WORKER_SECRET, not a human login cookie.
+    // Machine access uses WORKER_SECRET
     if (path === "/api/frames" && request.method === "POST") {
         const workerSecret = process.env.WORKER_SECRET;
         if (!workerSecret || workerSecret.length < 32) {
@@ -88,6 +95,9 @@ async function routeRequest(request: Request, clientIp: string) {
         return Response.json({ error: "Please log in" }, { status: 401 });
     }
 
+    const accountResponse = await handleAccountRequest(database, request);
+    if (accountResponse !== null) return accountResponse;
+
     const maintenanceResponse = await handleMaintenanceRequest(database, request);
     if (maintenanceResponse !== null) return maintenanceResponse;
 
@@ -96,31 +106,10 @@ async function routeRequest(request: Request, clientIp: string) {
     const backupResponse = await handleBackupRequest(database, request, resolve(import.meta.dir, "..", "data"));
     if (backupResponse !== null) return backupResponse;
 
-    // Admin-only information must not be available to employees.
-    if (path.startsWith("/api/admin/") && user.role !== "superAdmin") {
-        return Response.json({ error: "Super admin access required" }, { status: 403 });
-    }
-
-    if (request.method !== "GET") {
-        if (user.role === "employee") {
-            return Response.json({ error: "Employees have read-only access" }, { status: 403 });
+    if (path === "/api/readings" && request.method === "GET") {
+        if (!hasPermission(user, "readings.view")) {
+            return Response.json({ error: "Readings permission required" }, { status: 403 });
         }
-        if (!hasValidCsrf(request, user)) {
-            return Response.json({ error: "Invalid request token" }, { status: 403 });
-        }
-        // Add specific approved write routes here as we build them.
-        return Response.json({ error: "This action is not available" }, { status: 405 });
-    }
-
-    if (path === "/api/admin/users") {
-        const users = database.query(`
-            SELECT userId, username, email, role, isActive, createdAt
-            FROM users ORDER BY userId
-        `).all();
-        return Response.json({ users: users });
-    }
-
-    if (path === "/api/readings") {
         let bridgeId = requestUrl.searchParams.get("bridgeId");
         if (bridgeId === null) {
             bridgeId = "bridge1";

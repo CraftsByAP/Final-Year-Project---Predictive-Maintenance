@@ -1,4 +1,5 @@
 import { Database } from "bun:sqlite";
+import { accountDetails } from "./permissions";
 import { randomBytes, randomInt } from "node:crypto";
 import { sendVerificationEmail } from "./email";
 
@@ -268,17 +269,6 @@ export function verifyLoginCode(
             };
         }
 
-        if (
-            account.role !== "superAdmin" &&
-            account.role !== "admin" &&
-            account.role !== "employee"
-        ) {
-            return {
-                error: "Unsupported account role",
-                account: null
-            };
-        }
-
         const now = Date.now();
 
         // Mark the code as verified and prevent reuse.
@@ -288,15 +278,12 @@ export function verifyLoginCode(
             WHERE codeId = ?
         `).run(now, now, codeId);
 
+        database.query("UPDATE users SET emailVerifiedAt = ? WHERE userId = ?").run(now, account.userId);
+
         return {
             error: null,
 
-            account: {
-                userId: account.userId,
-                username: account.username,
-                email: account.email,
-                role: account.role
-            }
+            account: accountDetails(database, account)
         };
     });
 

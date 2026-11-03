@@ -1,3 +1,4 @@
+import { AccountsPanel } from "./AccountsPanel";
 import { ReportsPanel } from "./ReportsPanel";
 import { BackupsPanel } from "./BackupsPanel";
 import { MaintenancePanel } from "./MaintenancePanel";
@@ -7,7 +8,7 @@ import { SensorChart } from "./SensorChart";
 import "./monitoring.css";
 import { BridgeMark } from "./AuthLayout";
 import { errorMessage, requestApi } from "./apiClient";
-import { roleLabel, type Account, type Reading, type UserRow } from "./types";
+import { roleLabel, can, type Account, type Reading } from "./types";
 
 type DashboardProps = {
     user: Account;
@@ -64,12 +65,9 @@ function DashboardView(props: BridgeProps) {
     const bridgeNumber = bridgeId.slice(-1);
     const [activeTab, setActiveTab] = useState("overview");
     const [readings, setReadings] = useState<Reading[]>([]);
-    const [users, setUsers] = useState<UserRow[]>([]);
     const [selectedSensor, setSelectedSensor] = useState("all");
     const [readingsError, setReadingsError] = useState("");
-    const [usersError, setUsersError] = useState("");
     const [refreshing, setRefreshing] = useState(false);
-    const [loadingUsers, setLoadingUsers] = useState(false);
     const [hasLoaded, setHasLoaded] = useState(false);
     const [connectionOk, setConnectionOk] = useState(false);
     const [lastChecked, setLastChecked] = useState("");
@@ -77,6 +75,7 @@ function DashboardView(props: BridgeProps) {
     const refreshInProgress = useRef(false);
 
     async function refreshReadings() {
+        if (!can(user, "readings.view")) return;
         if (refreshInProgress.current) {
             return;
         }
@@ -122,32 +121,6 @@ function DashboardView(props: BridgeProps) {
             window.clearInterval(timer);
         };
     }, [user.userId]);
-
-    async function openAccounts() {
-        if (user.role !== "superAdmin") {
-            return;
-        }
-
-        setActiveTab("accounts");
-        setLoadingUsers(true);
-        setUsersError("");
-
-        try {
-            const result = await requestApi("/api/admin/users");
-            if (result.status === 401) {
-                onSessionExpired();
-                return;
-            }
-            if (!result.ok) {
-                throw new Error(result.data.error || "Accounts could not be loaded.");
-            }
-            setUsers(result.data.users);
-        } catch (error) {
-            setUsersError(errorMessage(error));
-        } finally {
-            setLoadingUsers(false);
-        }
-    }
 
     // Results are ordered oldest first by the API.
     let latestReading: Reading | null = null;
@@ -250,18 +223,6 @@ function DashboardView(props: BridgeProps) {
         sensorOptions.push(<option key={sensor.name} value={sensor.name}>{sensor.label}</option>);
     }
 
-    const accountRows = [];
-    for (const account of users) {
-        accountRows.push(
-            <tr key={account.userId}>
-                <td><strong>{account.username}</strong></td>
-                <td>{roleLabel(account.role)}</td>
-                <td>{account.email || "Not assigned"}</td>
-                <td><span className={"statusPill " + (account.isActive === 1 ? "good" : "neutral")}>{account.isActive === 1 ? "Active" : "Inactive"}</span></td>
-            </tr>
-        );
-    }
-
     return (
         <div className="dashboardPage">
             <aside className="sidebar">
@@ -275,11 +236,11 @@ function DashboardView(props: BridgeProps) {
                         onClick={function () { setActiveTab("overview"); }}><span>01</span>Overview</button>
                     <button className={activeTab === "history" ? "navActive" : ""} aria-current={activeTab === "history" ? "page" : undefined}
                         onClick={function () { setActiveTab("history"); }}><span>02</span>Saved readings</button>
-                    <button className={activeTab === "maintenance" ? "navActive" : ""} onClick={function () { setActiveTab("maintenance"); }}><span>03</span>Maintenance</button>
-                    {(user.role === "admin" || user.role === "superAdmin") && <button className={activeTab === "reports" ? "navActive" : ""} onClick={function () { setActiveTab("reports"); }}><span>04</span>Reports</button>}
-                    {user.role === "superAdmin" && <button className={activeTab === "backups" ? "navActive" : ""} onClick={function () { setActiveTab("backups"); }}><span>05</span>Backups</button>}
-                    {user.role === "superAdmin" && <button className={activeTab === "accounts" ? "navActive" : ""} aria-current={activeTab === "accounts" ? "page" : undefined}
-                        onClick={openAccounts}><span>06</span>Accounts</button>}
+                    {(can(user, "maintenance.own") || can(user, "maintenance.manage")) && <button className={activeTab === "maintenance" ? "navActive" : ""} onClick={function () { setActiveTab("maintenance"); }}><span>03</span>Maintenance</button>}
+                    {can(user, "reports.view") && <button className={activeTab === "reports" ? "navActive" : ""} onClick={function () { setActiveTab("reports"); }}><span>04</span>Reports</button>}
+                    {can(user, "backups.manage") && <button className={activeTab === "backups" ? "navActive" : ""} onClick={function () { setActiveTab("backups"); }}><span>05</span>Backups</button>}
+                    {(can(user, "accounts.manage") || can(user, "roles.manage")) && <button className={activeTab === "accounts" ? "navActive" : ""} aria-current={activeTab === "accounts" ? "page" : undefined}
+                        onClick={function () { setActiveTab("accounts"); }}><span>06</span>Accounts</button>}
                 </nav>
                 <div className="sidebarBottom">
                     <span className="sidebarAvatar">{user.username.slice(0, 1).toUpperCase()}</span>
@@ -296,13 +257,7 @@ function DashboardView(props: BridgeProps) {
                 <div className="simulationNotice"><span className="noticeIcon">i</span><p><strong>Simulation environment.</strong> Readings are synthetic and limits are demonstration values. One step represents one simulated hour.</p></div>
                 {accountError !== "" && <div className="errorBanner" role="alert">{accountError}</div>}
 
-                {activeTab === "reports" ? <ReportsPanel onSessionExpired={onSessionExpired} /> : activeTab === "backups" ? <BackupsPanel onSessionExpired={onSessionExpired} /> : activeTab === "maintenance" ? <MaintenancePanel user={user} onSessionExpired={onSessionExpired} /> : activeTab === "accounts" ? (
-                    <section className="dataPanel">
-                        <div className="panelHeading"><div><h2>Authorised accounts</h2><p>Account roles and registered email addresses.</p></div><span className="statusPill neutral">Super admin only</span></div>
-                        {usersError !== "" && <div className="panelError" role="alert">{usersError}</div>}
-                        {loadingUsers ? <p className="emptyState" role="status">Loading accounts…</p> : accountRows.length === 0 ? <p className="emptyState">No accounts to display.</p> : <div className="tableScroll"><table><thead><tr><th>Username</th><th>Role</th><th>Registered email</th><th>Status</th></tr></thead><tbody>{accountRows}</tbody></table></div>}
-                    </section>
-                ) : (
+                {activeTab === "reports" ? <ReportsPanel onSessionExpired={onSessionExpired} /> : activeTab === "backups" ? <BackupsPanel onSessionExpired={onSessionExpired} /> : activeTab === "maintenance" ? <MaintenancePanel user={user} onSessionExpired={onSessionExpired} /> : activeTab === "accounts" ? <AccountsPanel user={user} onSessionExpired={onSessionExpired} /> : !can(user, "readings.view") ? <p className="emptyState">Choose one of your permitted sections from the menu. This role cannot view bridge readings.</p> : (
                     <>
                         <section className="bridgeHeading"><div><span className="bridgeTag">BRIDGE 0{bridgeNumber}</span><h2>Bridge {bridgeNumber} <span>Demonstration profile</span></h2><p>{latestReading === null ? "No sensor frame received yet." : "Last frame recorded " + readableDate(latestReading.recordedAt)}</p></div><div className="bridgeControls"><label htmlFor="bridgeChoice">Bridge</label><select id="bridgeChoice" value={bridgeId} onChange={function (event) { onBridgeChange(event.target.value); }}><option value="bridge1">Bridge 1 · 20 m demo</option><option value="bridge2">Bridge 2 · 34 m demo</option><option value="bridge3">Bridge 3 · 48 m demo</option></select><button className="secondaryButton" onClick={refreshReadings} disabled={refreshing}>{refreshing ? "Refreshing…" : "Refresh data"}</button></div></section>
                         {readingsError !== "" && <div className="errorBanner" role="alert">{readingsError} Existing values, if shown, are cached readings.</div>}

@@ -1,4 +1,5 @@
 import { Database } from "bun:sqlite";
+import { accountsReady } from "./migrateAccounts";
 import { resolve } from "node:path";
 import { password as askPassword } from "@inquirer/prompts";
 
@@ -13,6 +14,11 @@ const database = new Database(databasePath, {
     readwrite: true,
     create: false
 });
+
+if (accountsReady(database)) {
+    database.close();
+    throw new Error("Use the Accounts screen to manage users after the account migration...");
+}
 
 database.exec("PRAGMA foreign_keys = ON");
 database.exec("PRAGMA busy_timeout = 5000");

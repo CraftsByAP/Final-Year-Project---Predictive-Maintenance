@@ -4,6 +4,7 @@ export type Account = {
     username: string;
     email: string | null;
     role: string;
+    permissions: string[];
 };
 
 export type Reading = {
@@ -35,4 +36,8 @@ export function roleLabel(role: string) {
         return "Employee : Read only";
     }
     return role;
+}
+
+export function can(user: Account, permission: string) {
+    return user.permissions.includes(permission);
 }

@@ -1,3 +1,4 @@
+import { hasPermission } from "./permissions";
 import { Database } from "bun:sqlite";
 import { getSessionUser, hasValidCsrf } from "./sessions";
 
@@ -61,11 +62,12 @@ export async function handleMaintenanceRequest(database: Database, request: Requ
     if (path !== "/api/maintenance" && !path.startsWith("/api/maintenance/")) return null;
     const user = getSessionUser(database, request);
     if (user === null) return errorResponse("Please log in", 401);
-    const isAdmin = user.role === "admin" || user.role === "superAdmin";
+    const isAdmin = hasPermission(user, "maintenance.manage");
+    if (!isAdmin && !hasPermission(user, "maintenance.own")) return errorResponse("Maintenance permission required", 403);
 
     if (path === "/api/maintenance/employees" && request.method === "GET") {
         if (!isAdmin) return errorResponse("Admin access required", 403);
-        const employees = database.query("SELECT userId, username FROM users WHERE role = 'employee' AND isActive = 1 ORDER BY username").all();
+        const employees = database.query("SELECT userId, username FROM users WHERE role IN (SELECT roleName FROM rolePermissions WHERE permission = 'maintenance.assign') AND isActive = 1 AND emailVerifiedAt IS NOT NULL ORDER BY username").all();
         return Response.json({ employees: employees });
     }
 
@@ -85,22 +87,32 @@ export async function handleMaintenanceRequest(database: Database, request: Requ
         return Response.json({ tasks: tasks });
     }
 
-    if (!isAdmin) return errorResponse("Employees have read-only access", 403);
-    if (request.method !== "POST" && request.method !== "PATCH") return errorResponse("Action not available", 405);
-    if (!hasValidCsrf(request, user)) return errorResponse("Invalid request token", 403);
+    if (!isAdmin)
+        return errorResponse("Employees have read-only access", 403);
+    if (request.method !== "POST" && request.method !== "PATCH")
+        return errorResponse("Action not available", 405);
+    if (!hasValidCsrf(request, user))
+        return errorResponse("Invalid request token", 403);
 
     const creating = path === "/api/maintenance" && request.method === "POST";
     const match = /^\/api\/maintenance\/([1-9]\d*)$/.exec(path);
     const editing = match !== null && request.method === "PATCH";
-    if (!creating && !editing) return errorResponse("Task endpoint not found", 404);
-    if (!request.headers.get("Content-Type")?.startsWith("application/json")) return errorResponse("Send application/json", 415);
+    if (!creating && !editing)
+        return errorResponse("Task endpoint not found", 404);
+    if (!request.headers.get("Content-Type")?.startsWith("application/json"))
+        return errorResponse("Send application/json", 415);
     let body;
-    try { body = await request.json(); } catch { return errorResponse("Invalid JSON"); }
+    try { body = await request.json(); }
+    catch {
+        return errorResponse("Invalid JSON");
+    }
     const validationError = validateTask(body, editing);
-    if (validationError !== null) return errorResponse(validationError);
+    if (validationError !== null)
+        return errorResponse(validationError);
 
-    const employee = database.query("SELECT userId FROM users WHERE userId = ? AND role = 'employee' AND isActive = 1").get(body.assignedTo);
-    if (employee === null) return errorResponse("Assign the task to an active employee.");
+    const employee = database.query("SELECT userId FROM users WHERE userId = ? AND role IN (SELECT roleName FROM rolePermissions WHERE permission = 'maintenance.assign') AND isActive = 1 AND emailVerifiedAt IS NOT NULL").get(body.assignedTo);
+    if (employee === null)
+        return errorResponse("Assign the task to an active employee.");
     const now = new Date().toISOString();
 
     if (creating) {
@@ -119,13 +131,16 @@ export async function handleMaintenanceRequest(database: Database, request: Requ
     const taskId = Number(match![1]);
     const updateTask = database.transaction(function () {
         const previous = database.query("SELECT taskId,status,version FROM maintenanceTasks WHERE taskId = ?").get(taskId) as ExistingTask | null;
-        if (previous === null) return errorResponse("Task not found", 404);
-        if (previous.version !== body.version) return errorResponse("Another admin changed this task. Refresh before editing again.", 409);
+        if (previous === null)
+            return errorResponse("Task not found", 404);
+        if (previous.version !== body.version)
+            return errorResponse("Another admin changed this task. Refresh before editing again.", 409);
         // Follow the workflow; completed work is kept as a record.
         if (body.status !== previous.status) {
             const advancing = previous.status === "Open" && body.status === "In progress";
             const completing = previous.status === "In progress" && body.status === "Completed";
-            if (!advancing && !completing) return errorResponse("Move from Open to In progress, then Completed.");
+            if (!advancing && !completing)
+                return errorResponse("Move from Open to In progress, then Completed.");
         }
         database.query(`UPDATE maintenanceTasks SET bridgeId=?,title=?,description=?,priority=?,status=?,assignedTo=?,dueDate=?,version=version+1,updatedAt=? WHERE taskId=?`).run(body.bridgeId, body.title.trim(), body.description.trim(), body.priority, body.status, body.assignedTo, body.dueDate, now, taskId);
         database.query("INSERT INTO maintenanceEvents(taskId,actorId,action,oldStatus,newStatus,recordedAt) VALUES(?,?,'Updated',?,?,?)").run(taskId, user.userId, previous.status, body.status, now);

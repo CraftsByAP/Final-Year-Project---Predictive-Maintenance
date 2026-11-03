@@ -1,4 +1,5 @@
 import { Database } from "bun:sqlite";
+import { accountDetails } from "./permissions";
 
 // Describes Account Info from SQLite.
 type UserAccount = {
@@ -59,20 +60,7 @@ export async function checkCredentials(
         );
     }
 
-    if (
-        account.role !== "superAdmin" &&
-        account.role !== "admin" &&
-        account.role !== "employee"
-    ) {
-        throw new Error("This account has an unsupported role");
-    }
-
     // Return only the information needed for the next login step.
     // Did not return password hash.
-    return {
-        userId: account.userId,
-        username: account.username,
-        email: account.email,
-        role: account.role
-    };
+    return accountDetails(database, account);
 }

@@ -1,4 +1,5 @@
 import { Database } from "bun:sqlite";
+import { accountsReady } from "./migrateAccounts";
 import { resolve } from "node:path";
 import { randomBytes } from "node:crypto";
 
@@ -14,12 +15,17 @@ const database = new Database(databasePath, {
     create: false
 });
 
+if (accountsReady(database)) {
+    database.close();
+    throw new Error("Use the Accounts screen to manage users after the account migration. This legacy setup script is disabled.");
+}
+
 database.exec("PRAGMA foreign_keys = ON");
 database.exec("PRAGMA busy_timeout = 5000");
 
 
 function prepareAccountTables() {
-    // For New Sign up = include all three roles.
+    // For New Sign up = include all three roles- this only works for super admin...I'll test to check
     database.exec(`
         CREATE TABLE IF NOT EXISTS users (
             userId INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,7 +69,7 @@ function prepareAccountTables() {
         return;
     }
 
-    // Save a recovery copy before changing the existing table.
+    // Saving a recovery copy before changing the existing table.
     const backupPath =
         databasePath + ".before-employees-" + Date.now() + ".db";
 
@@ -131,7 +137,12 @@ function prepareAccountTables() {
         migrateUsers();
 
     } finally {
-        database.exec("PRAGMA foreign_keys = ON");
+        if (accountsReady(database)) {
+    database.close();
+    throw new Error("Use the Accounts screen to manage users after the account migration. This legacy setup script is disabled.");
+}
+
+database.exec("PRAGMA foreign_keys = ON");
     }
 
     console.log("Employee role added. Existing users preserved.");

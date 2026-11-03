@@ -1,10 +1,12 @@
+import { hasPermission } from "./permissions";
 import { Database } from "bun:sqlite";
 import { getSessionUser } from "./sessions";
 
 type Row = Record<string, string | number | null>;
 
 function validDate(value: string) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value))
+        return false;
     const date = new Date(value + "T00:00:00Z");
     return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
@@ -23,7 +25,7 @@ export async function handleReportRequest(database: Database, request: Request) 
     const user = getSessionUser(database, request);
     if (user === null)
         return Response.json({ error: "Please log in" }, { status: 401 });
-    if (user.role !== "admin" && user.role !== "superAdmin")
+    if (!hasPermission(user, "reports.view"))
         return Response.json({ error: "Admin access required" }, { status: 403 });
     if (request.method !== "GET")
         return Response.json({ error: "Use GET for reports" }, { status: 405 });

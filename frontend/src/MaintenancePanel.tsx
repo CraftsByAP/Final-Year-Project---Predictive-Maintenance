@@ -1,3 +1,4 @@
+import { can } from "./types";
 import { useEffect, useState, type FormEvent } from "react";
 import type { Account } from "./types";
 import { requestApi, errorMessage } from "./apiClient";
@@ -12,7 +13,7 @@ type Employee = { userId: number; username: string };
 type Props = { user: Account; onSessionExpired: () => void };
 
 export function MaintenancePanel({ user, onSessionExpired }: Props) {
-    const isAdmin = user.role === "admin" || user.role === "superAdmin";
+    const isAdmin = can(user, "maintenance.manage");
     const [tasks, setTasks] = useState<Task[]>([]);
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [csrfToken, setCsrfToken] = useState("");
