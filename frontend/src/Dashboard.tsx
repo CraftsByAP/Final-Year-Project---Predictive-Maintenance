@@ -1,3 +1,4 @@
+import { LoadingState, LoadingSpinner } from "./LoadingState";
 import { AccountsPanel } from "./AccountsPanel";
 import { ReportsPanel } from "./ReportsPanel";
 import { BackupsPanel } from "./BackupsPanel";
@@ -251,13 +252,16 @@ function DashboardView(props: BridgeProps) {
             <main className="dashboardMain">
                 <header className="dashboardHeader">
                     <div><span className="eyebrow">MONITORING WORKSPACE</span><h1>{activeTab === "reports" ? "Reports" : activeTab === "backups" ? "Database backups" : activeTab === "maintenance" ? "Maintenance tasks" : activeTab === "accounts" ? "Team accounts" : activeTab === "history" ? "Saved readings" : "Bridge overview"}</h1></div>
-                    <div className="headerActions"><span className={"statusPill " + feedClass}><span className="smallDot" />{feedLabel}</span><button className="secondaryButton" onClick={onLogout} disabled={loggingOut}>{loggingOut ? "Signing out…" : "Sign out"}</button></div>
+                    <div className="headerActions">{refreshing && hasLoaded && can(user, "readings.view") && (activeTab === "overview" || activeTab === "history") && <span className="readingsUpdating"><LoadingSpinner />Updating…</span>}<span className={"statusPill " + feedClass}><span className="smallDot" />{feedLabel}</span><button className="secondaryButton" onClick={onLogout} disabled={loggingOut}>{loggingOut && <LoadingSpinner />} {loggingOut ? "Signing out…" : "Sign out"}</button></div>
                 </header>
 
                 <div className="simulationNotice"><span className="noticeIcon">i</span><p><strong>Simulation Environment.</strong> </p></div>
                 {accountError !== "" && <div className="errorBanner" role="alert">{accountError}</div>}
 
-                {activeTab === "reports" ? <ReportsPanel onSessionExpired={onSessionExpired} /> : activeTab === "backups" ? <BackupsPanel onSessionExpired={onSessionExpired} /> : activeTab === "maintenance" ? <MaintenancePanel user={user} onSessionExpired={onSessionExpired} /> : activeTab === "accounts" ? <AccountsPanel user={user} onSessionExpired={onSessionExpired} /> : !can(user, "readings.view") ? <p className="emptyState">This Role Cannot View Bridge Readings.</p> : (
+                <div className="infrasightPageContent" key={activeTab}>
+                {activeTab === "reports" ? <ReportsPanel onSessionExpired={onSessionExpired} /> : activeTab === "backups" ? <BackupsPanel onSessionExpired={onSessionExpired} /> : activeTab === "maintenance" ? <MaintenancePanel user={user} onSessionExpired={onSessionExpired} /> : activeTab === "accounts" ? <AccountsPanel user={user} onSessionExpired={onSessionExpired} /> : !can(user, "readings.view") ? <p className="emptyState">This Role Cannot View Bridge Readings.</p> : !hasLoaded ? (
+                    <LoadingState label={"Loading Bridge " + bridgeNumber} hint="Retrieving saved readings and analysis…" skeleton />
+                ) : (
                     <>
                         <section className="bridgeHeading"><div><span className="bridgeTag">BRIDGE 0{bridgeNumber}</span><h2>Bridge {bridgeNumber} <span>Demonstration profile</span></h2><p>{latestReading === null ? "No sensor frame received yet." : "Last frame recorded " + readableDate(latestReading.recordedAt)}</p></div><div className="bridgeControls"><label htmlFor="bridgeChoice">Bridge</label><select id="bridgeChoice" value={bridgeId} onChange={function (event) { onBridgeChange(event.target.value); }}><option value="bridge1">Bridge 1 : 20 m </option><option value="bridge2">Bridge 2 : 34 m </option><option value="bridge3">Bridge 3 : 48 m </option></select><button className="secondaryButton" onClick={refreshReadings} disabled={refreshing}>{refreshing ? "Refreshing…" : "Refresh data"}</button></div></section>
                         {readingsError !== "" && <div className="errorBanner" role="alert">{readingsError} Existing values, if shown, are cached readings.</div>}
@@ -283,6 +287,7 @@ function DashboardView(props: BridgeProps) {
                         </section>
                     </>
                 )}
+                </div>
                 <footer className="dashboardFoot"><span>||~INFRASIGHT~||</span><span>Authorised access · {roleLabel(user.role)}</span></footer>
             </main>
         </div>

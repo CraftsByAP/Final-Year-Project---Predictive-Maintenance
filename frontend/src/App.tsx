@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { LoadingState, LoadingSpinner } from "./LoadingState";
 import { AuthLayout } from "./AuthLayout";
 import { Dashboard } from "./Dashboard";
 import { errorMessage, requestApi } from "./apiClient";
@@ -187,11 +188,7 @@ export function App() {
     return (
         <AuthLayout>
             {screen === "loading" ? (
-                <div className="loadingState" role="status">
-                    <span className="spinner" />
-                    <h2>Checking your session</h2>
-                    <p>Connecting to InfraSight…</p>
-                </div>
+                <LoadingState label="Checking your session" hint="Connecting to InfraSight…" />
             ) : (
                 <>
                     <div className="accessBadge"><span className="smallDot" /> AUTHORISED STAFF ACCESS</div>
@@ -211,7 +208,7 @@ export function App() {
                     {error !== "" && <div className="errorBanner" role="alert">{error}</div>}
 
                     {screen === "password" ? (
-                        <form onSubmit={submitPassword}>
+                        <form onSubmit={submitPassword} aria-busy={busy}>
                             <label htmlFor="username">Username</label>
                             <input
                                 id="username" name="username" type="text"
@@ -231,13 +228,14 @@ export function App() {
                             />
 
                             <button className="primaryButton" type="submit" disabled={busy}>
+                                {busy && <LoadingSpinner />}
                                 {busy ? "Checking details & sending code…" : "Continue to email verification"}
                                 {!busy && <span aria-hidden="true">↗</span>}
                             </button>
                             <p className="formNote">Need an account or help signing in? Contact your system administrator.</p>
                         </form>
                     ) : (
-                        <form onSubmit={submitCode}>
+                        <form onSubmit={submitCode} aria-busy={busy}>
                             <div className="accountContext">Signing in as <strong>{username}</strong></div>
                             <label htmlFor="code">Verification code</label>
                             <input
@@ -254,6 +252,7 @@ export function App() {
                             </p>
 
                             <button className="primaryButton" type="submit" disabled={busy || secondsRemaining === 0}>
+                                {busy && <LoadingSpinner />}
                                 {busy ? "Verifying…" : "Verify & open dashboard"}
                                 {!busy && <span aria-hidden="true">↗</span>}
                             </button>
@@ -271,5 +270,4 @@ export function App() {
 }
 
 export default App;
-
 
