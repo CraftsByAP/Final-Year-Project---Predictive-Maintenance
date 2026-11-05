@@ -163,7 +163,7 @@ async function routeRequest(request: Request, clientIp: string) {
 }
 
 const server = Bun.serve({
-    hostname: "127.0.0.1",
+    hostname: "0.0.0.0",
     port: Number(process.env.PORT || 3000),
     maxRequestBodySize: maxServerBodyBytes,
     idleTimeout: 60,
