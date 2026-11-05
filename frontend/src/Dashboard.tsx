@@ -167,13 +167,13 @@ function DashboardView(props: BridgeProps) {
         if (latestSensorReading !== null) {
             const magnitude = Math.abs(latestSensorReading.value);
             if (magnitude >= sensor.critical) {
-                status = "Critical demo range";
+                status = "Critical Range";
                 statusClass = "critical";
             } else if (magnitude >= sensor.warning) {
-                status = "Warning demo range";
+                status = "Warning Range";
                 statusClass = "warning";
             } else {
-                status = "Within demo range";
+                status = "Within Range";
                 statusClass = "good";
             }
         }
@@ -226,9 +226,9 @@ function DashboardView(props: BridgeProps) {
     return (
         <div className="dashboardPage">
             <aside className="sidebar">
-                <a className="brand brandLight" href="/" aria-label="PMSB home">
+                <a className="brand brandLight" href="/" aria-label="InfraSight Home">
                     <span className="brandSymbol"><BridgeMark /></span>
-                    <span>PMSB<span className="brandCaption">BRIDGE MAINTENANCE</span></span>
+                    <span>InfraSight<span className="brandCaption">BRIDGE MAINTENANCE</span></span>
                 </a>
                 <p className="navCaption">WORKSPACE</p>
                 <nav aria-label="Main navigation">
@@ -254,12 +254,12 @@ function DashboardView(props: BridgeProps) {
                     <div className="headerActions"><span className={"statusPill " + feedClass}><span className="smallDot" />{feedLabel}</span><button className="secondaryButton" onClick={onLogout} disabled={loggingOut}>{loggingOut ? "Signing out…" : "Sign out"}</button></div>
                 </header>
 
-                <div className="simulationNotice"><span className="noticeIcon">i</span><p><strong>Simulation environment.</strong> Readings are synthetic and limits are demonstration values. One step represents one simulated hour.</p></div>
+                <div className="simulationNotice"><span className="noticeIcon">i</span><p><strong>Simulation Environment.</strong> </p></div>
                 {accountError !== "" && <div className="errorBanner" role="alert">{accountError}</div>}
 
-                {activeTab === "reports" ? <ReportsPanel onSessionExpired={onSessionExpired} /> : activeTab === "backups" ? <BackupsPanel onSessionExpired={onSessionExpired} /> : activeTab === "maintenance" ? <MaintenancePanel user={user} onSessionExpired={onSessionExpired} /> : activeTab === "accounts" ? <AccountsPanel user={user} onSessionExpired={onSessionExpired} /> : !can(user, "readings.view") ? <p className="emptyState">Choose one of your permitted sections from the menu. This role cannot view bridge readings.</p> : (
+                {activeTab === "reports" ? <ReportsPanel onSessionExpired={onSessionExpired} /> : activeTab === "backups" ? <BackupsPanel onSessionExpired={onSessionExpired} /> : activeTab === "maintenance" ? <MaintenancePanel user={user} onSessionExpired={onSessionExpired} /> : activeTab === "accounts" ? <AccountsPanel user={user} onSessionExpired={onSessionExpired} /> : !can(user, "readings.view") ? <p className="emptyState">This Role Cannot View Bridge Readings.</p> : (
                     <>
-                        <section className="bridgeHeading"><div><span className="bridgeTag">BRIDGE 0{bridgeNumber}</span><h2>Bridge {bridgeNumber} <span>Demonstration profile</span></h2><p>{latestReading === null ? "No sensor frame received yet." : "Last frame recorded " + readableDate(latestReading.recordedAt)}</p></div><div className="bridgeControls"><label htmlFor="bridgeChoice">Bridge</label><select id="bridgeChoice" value={bridgeId} onChange={function (event) { onBridgeChange(event.target.value); }}><option value="bridge1">Bridge 1 · 20 m demo</option><option value="bridge2">Bridge 2 · 34 m demo</option><option value="bridge3">Bridge 3 · 48 m demo</option></select><button className="secondaryButton" onClick={refreshReadings} disabled={refreshing}>{refreshing ? "Refreshing…" : "Refresh data"}</button></div></section>
+                        <section className="bridgeHeading"><div><span className="bridgeTag">BRIDGE 0{bridgeNumber}</span><h2>Bridge {bridgeNumber} <span>Demonstration profile</span></h2><p>{latestReading === null ? "No sensor frame received yet." : "Last frame recorded " + readableDate(latestReading.recordedAt)}</p></div><div className="bridgeControls"><label htmlFor="bridgeChoice">Bridge</label><select id="bridgeChoice" value={bridgeId} onChange={function (event) { onBridgeChange(event.target.value); }}><option value="bridge1">Bridge 1 : 20 m </option><option value="bridge2">Bridge 2 : 34 m </option><option value="bridge3">Bridge 3 : 48 m </option></select><button className="secondaryButton" onClick={refreshReadings} disabled={refreshing}>{refreshing ? "Refreshing…" : "Refresh data"}</button></div></section>
                         {readingsError !== "" && <div className="errorBanner" role="alert">{readingsError} Existing values, if shown, are cached readings.</div>}
 
                         {activeTab === "overview" && <>
@@ -271,13 +271,13 @@ function DashboardView(props: BridgeProps) {
                             </section>
                             <div className="sectionLabel"><h2>Latest sensor readings</h2><span>Values at the last recorded frame</span></div>
                             <section className="sensorGrid" aria-label="Sensor readings">{sensorCards}</section>
-                            <div className="sectionLabel"><h2>Sensor trends</h2><span>Latest run only · up to 60 stored frames</span></div>
+                            <div className="sectionLabel"><h2>Sensor trends</h2><span>Latest run only : up to 60 stored frames</span></div>
                             <section className="trendGrid" aria-label="Sensor trend graphs">{sensorCharts}</section>
                             <AnalysisPanel readings={readings} />
                         </>}
 
                         <section className="dataPanel">
-                            <div className="panelHeading"><div><h2>Recorded observations</h2><p>Latest 60 stored frames · Showing {visibleRows.length} of {matchingRows.length} matching readings</p></div><div className="sensorFilter"><label htmlFor="sensorFilter">Sensor</label><select id="sensorFilter" value={selectedSensor} onChange={function (event) { setSelectedSensor(event.target.value); }}><option value="all">All sensors</option>{sensorOptions}</select></div></div>
+                            <div className="panelHeading"><div><h2>Recorded observations</h2><p>Latest 60 stored frames : Showing {visibleRows.length} of {matchingRows.length} matching readings</p></div><div className="sensorFilter"><label htmlFor="sensorFilter">Sensor</label><select id="sensorFilter" value={selectedSensor} onChange={function (event) { setSelectedSensor(event.target.value); }}><option value="all">All sensors</option>{sensorOptions}</select></div></div>
                             {!hasLoaded ? <p className="emptyState" role="status">Loading stored readings…</p> : readingRows.length === 0 ? <p className="emptyState">No readings found. Start the Python worker to submit sensor frames.</p> : <div className="tableScroll"><table><thead><tr><th>Frame</th><th>Sensor</th><th>Reading</th><th>Scenario</th><th>Recorded time</th><th>Simulated hour</th></tr></thead><tbody>{readingRows}</tbody></table></div>}
                             <div className="tableFoot"><span>Times are shown in your browser's local timezone.</span><span>{lastChecked === "" ? "Waiting for API" : "API checked " + new Date(lastChecked).toLocaleTimeString("en-ZA")}</span></div>
                         </section>

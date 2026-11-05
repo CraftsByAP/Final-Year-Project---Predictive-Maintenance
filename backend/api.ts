@@ -1,3 +1,4 @@
+import { limitRequestBody, maxServerBodyBytes } from "./requestSize";
 import { accountsReady } from "./migrateAccounts";
 import { handleAccountRequest } from "./accountRoutes";
 import { hasPermission } from "./permissions";
@@ -45,7 +46,7 @@ async function routeRequest(request: Request, clientIp: string) {
         });
     }
 
-    // Machine access uses WORKER_SECRET
+    // Machine access uses WORKER_SECRET, not a human login cookie.
     if (path === "/api/frames" && request.method === "POST") {
         const workerSecret = process.env.WORKER_SECRET;
         if (!workerSecret || workerSecret.length < 32) {
@@ -164,7 +165,7 @@ async function routeRequest(request: Request, clientIp: string) {
 const server = Bun.serve({
     hostname: "127.0.0.1",
     port: Number(process.env.PORT || 3000),
-    maxRequestBodySize: 65536,
+    maxRequestBodySize: maxServerBodyBytes,
     idleTimeout: 60,
 
     // Bun bundles the existing React frontend and serves it with the API.
@@ -186,7 +187,9 @@ const server = Bun.serve({
 
         let response;
         try {
-            response = await routeRequest(request, clientIp);
+            const checkedRequest = await limitRequestBody(request);
+            if (checkedRequest instanceof Response) response = checkedRequest;
+            else response = await routeRequest(checkedRequest, clientIp);
         } catch (error) {
             console.error("API request failed:", error);
             response = Response.json({ error: "The server could not complete the request" }, { status: 500 });

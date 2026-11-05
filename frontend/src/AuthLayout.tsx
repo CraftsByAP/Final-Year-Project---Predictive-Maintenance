@@ -18,12 +18,12 @@ export function AuthLayout({ children }: { children: ReactNode }) {
 
                 <a className="brand brandLight" href="/" aria-label="Home">
                     <span className="brandSymbol"><BridgeMark /></span>
-                    <span>PMSB<span className="brandCaption">BRIDGE MAINTENANCE</span></span>
+                    <span>InfraSight<span className="brandCaption">BRIDGE MAINTENANCE</span></span>
                 </a>
 
                 <div className="storyContent">
                     <span className="eyebrow lightEyebrow">PREDICTIVE MAINTENANCE</span>
-                    <h1>Better,Faster...<br />Proactive.</h1>
+                    <h1>Predict Tomorrow,<br />Protect Today</h1>
                     <p>Bring bridge readings into focus and give your maintenance team the information it needs.</p>
 
                     <div className="bridgeDrawing">

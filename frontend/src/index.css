@@ -82,7 +82,24 @@ form .codeInput { font-size: 27px; font-variant-numeric: tabular-nums; letter-sp
 .spinner { display: inline-block; width: 25px; height: 25px; border: 2px solid #d4e6e2; border-top-color: #207f76; border-radius: 50%; animation: rotate .8s linear infinite; }
 @keyframes rotate { to { transform: rotate(360deg); } }
 
-.dashboardPage { min-height: 100svh; display: grid; grid-template-columns: 224px minmax(0, 1fr); }
+.dashboardPage {
+    min-height: 100svh;
+    display: grid;
+    grid-template-columns: 224px minmax(0, 1fr);
+
+    background-color: #f8faff;
+    background-image:
+        radial-gradient(
+            ellipse at top right,
+            rgba(139, 92, 246, 0.12),
+            transparent 55%
+        ),
+        radial-gradient(
+            ellipse at top left,
+            rgba(59, 130, 246, 0.10),
+            transparent 50%
+        );
+}
 .sidebar { background: #171121; padding: 30px 20px 23px; display: flex; flex-direction: column; position: sticky; top: 0; height: 100svh; }
 .sidebar .brand { gap: 9px; font-size: 23px; }
 .sidebar .brandCaption { font-size: 6px; letter-spacing: 1.35px; }
@@ -291,3 +308,157 @@ tbody tr:hover { background: #9B7ED60A; }
 .drawingCaption, .storyFoot, .storyFeatures { color: #C2B8D2; }
 @media (max-width: 760px) { .authCard { padding: 28px 22px; border-radius: 16px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+.dashboardPage .dashboardMain {
+    background: transparent;
+}
+/* Light dashboard: violet and blue accents */
+.dashboardPage {
+    color-scheme: light;
+    --ink: #24324a;
+    --muted: #627089;
+    --line: #dfe4ef;
+
+    color: var(--ink);
+    background:
+        radial-gradient(
+            ellipse at top right,
+            rgba(139, 92, 246, 0.14),
+            transparent 55%
+        ),
+        radial-gradient(
+            ellipse at top left,
+            rgba(59, 130, 246, 0.10),
+            transparent 50%
+        ),
+        #f8faff;
+}
+
+.dashboardPage .dashboardMain {
+    background: transparent;
+    color: var(--ink);
+}
+
+.dashboardMain h1,
+.dashboardMain h2,
+.dashboardMain h3,
+.dashboardMain .sensorValue,
+.dashboardMain .summaryStrip strong {
+    color: #24324a;
+}
+
+.dashboardMain .sensorCard,
+.dashboardMain .dataPanel,
+.dashboardMain .summaryStrip {
+    background: #ffffff;
+    border-color: var(--line);
+}
+
+.dashboardMain .eyebrow,
+.dashboardMain .sensorLimits,
+.dashboardMain .sensorValue span,
+.dashboardMain .summaryStrip span,
+.dashboardMain .sectionLabel > span {
+    color: #627089;
+}
+
+.dashboardMain .secondaryButton {
+    background: #ffffff;
+    color: #543b91;
+    border-color: #d9d1ed;
+}
+
+.dashboardMain .secondaryButton:hover:not(:disabled) {
+    background: #eee9fa;
+}
+
+.dashboardMain .simulationNotice {
+    background: #f0ebfa;
+    border-color: #ded3f3;
+    color: #605079;
+}
+
+.dashboardMain .simulationNotice strong,
+.dashboardMain .noticeIcon {
+    color: #64429b;
+}
+
+.dashboardMain th {
+    background: #eeeaf6;
+    color: #594675;
+}
+
+.dashboardMain td {
+    color: #34445b;
+}
+
+
+.dashboardPage .dashboardMain {
+    background: transparent !important;
+}
+/* Softer dashboard background */
+.dashboardPage {
+    background:
+        radial-gradient(
+            ellipse at top right,
+            rgba(139, 92, 246, 0.18),
+            transparent 60%
+        ),
+        radial-gradient(
+            ellipse at bottom left,
+            rgba(96, 165, 250, 0.14),
+            transparent 60%
+        ),
+        #eeedf5;
+}
+
+/* Slightly tinted cards */
+.dashboardMain .sensorCard,
+.dashboardMain .dataPanel,
+.dashboardMain .summaryStrip {
+    background: #f8f7fc;
+}
+.dashboardHeader {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    padding: 18px 20px;
+    border-radius: 16px;
+    background: #f0edf7;
+}
+
+.dashboardHeader::before {
+    content: "";
+    position: absolute;
+    inset: -35%;
+    z-index: -1;
+    pointer-events: none;
+
+    background:
+        radial-gradient(
+            ellipse at 25% 40%,
+            rgba(139, 92, 246, 0.22),
+            transparent 50%
+        ),
+        radial-gradient(
+            ellipse at 75% 60%,
+            rgba(96, 165, 250, 0.20),
+            transparent 50%
+        );
+
+    animation: headerDrift 16s ease-in-out infinite alternate;
+}
+
+@keyframes headerDrift {
+    from {
+        transform: translate(-3%, -2%);
+    }
+    to {
+        transform: translate(3%, 2%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dashboardHeader::before {
+        animation: none;
+    }
+}

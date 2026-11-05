@@ -177,7 +177,7 @@ export function AccountsPanel({ user, onSessionExpired }: Props) {
     return <section className="accountsPanel">
         {error && <div className="errorBanner" role="alert">{error}</div>}
         {message && <p className="taskSuccess" role="status">{message}</p>}
-        <p>Accounts are invited by a manager. New email addresses must complete a password and email OTP login before dashboard access. Disable a person who leaves; their task history stays in the system.</p>
+
         {can(user, "accounts.manage") && <>
             <form className="dataPanel accountForm" onSubmit={saveUser}>
                 <h2>{editingUser ? "Edit account" : "Create an account"}</h2>

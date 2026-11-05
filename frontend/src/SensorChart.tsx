@@ -65,7 +65,7 @@ export function SensorChart({ readings, sensor, bridgeId }: ChartProps) {
                 <text className="chartAxisLabel" x={width / 2} y={height - 4} textAnchor="middle">Simulated hour · {sensor.unit} on vertical axis</text>
             </svg>
             <p className="chartLegend"><span>● Reading</span><span>– – Warning {sensor.warning}</span><span>··· Critical {sensor.critical}</span></p>
-            <p className="chartNote">{samples.length} samples from latest run. Independent vertical scale; threshold lines are demo limits.</p>
+            <p className="chartNote">{samples.length} samples from latest run. Independent vertical scale; threshold lines are Limits.</p>
         </>}
     </article>;
 }
