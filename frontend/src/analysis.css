@@ -1,0 +1,58 @@
+.analysisPanel {
+    margin-bottom: 28px;
+}
+.modelSummary {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 1fr;
+    gap: 20px;
+    padding: 22px;
+    border: 1px solid #393044;
+    border-radius: 16px;
+    background: #1D1828;
+}
+.modelSummary h3, .forecastCard h3 {
+    margin: 0 0 12px;
+    color: #F5F1FC;
+    font-size: 14px;
+
+}
+.modelSummary span, .analysisSmall {
+    font-size: 11px;
+    line-height: 1.7;
+    color: #ADA5BC;
+}
+.modelSummary strong { display: block;
+    color: #C6AFF0;
+    font: 18px "IBM Plex Mono", monospace;
+    margin-top: 8px;
+}
+.forecastGrid { display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+.forecastCard { background: #1D1828;
+    border: 1px solid #393044;
+    padding: 20px;
+    border-radius: 16px;
+}
+.forecastCard > p:not(.statusPill) {
+    color: #ADA5BC;
+    font-size: 12px;
+    line-height: 1.7;
+}
+.forecastCard .statusPill {
+    white-space: normal;
+    line-height: 1.5;
+}
+@media (max-width: 900px) {
+    .modelSummary {
+        grid-template-columns: 1fr;
+    }
+
+}
+@media (max-width: 650px) {
+    .forecastGrid {
+        grid-template-columns: 1fr;
+    }
+
+}

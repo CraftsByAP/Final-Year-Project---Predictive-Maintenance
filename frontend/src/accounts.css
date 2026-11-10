@@ -1,0 +1,56 @@
+.accountsPanel {
+    display: grid;
+    gap: 1.25rem;
+}
+.accountsPanel > p, .accountForm > p {
+    line-height: 1.6;
+
+}
+.accountForm {
+    padding: 1.5rem;
+}
+
+.accountForm fieldset {
+    border: 0;
+    padding: 0;
+
+    margin: 1rem 0 0;
+    display: grid;
+    gap: 1rem;
+}
+.accountForm label {
+    display: grid;
+    gap: .45rem;
+}
+.accountForm input:not([type="checkbox"]), .accountForm select {
+    width: 100%;
+    padding: .8rem;
+    border: 1px solid #8a82a0;
+    border-radius: .6rem;
+    color: #241735;
+    background: #fff;
+
+    font: inherit;
+}
+.accountForm .permissionChoice {
+    display: flex;
+    align-items: flex-start;
+    gap: .7rem;
+    line-height: 1.5;
+}
+.permissionChoice input[type="checkbox"] {
+    width: 1.2rem;
+    height: 1.2rem;
+    flex-shrink: 0;
+    accent-color: #7655c3;
+}
+.accountsPanel button:focus-visible, .accountForm input:focus-visible,  .accountForm select:focus-visible {
+    outline: 3px solid #9b7ed6;
+    outline-offset: 3px;
+}
+
+.accountsPanel td {
+    white-space: normal;
+    overflow-wrap: anywhere;
+
+}

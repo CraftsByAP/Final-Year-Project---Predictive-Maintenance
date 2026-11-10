@@ -1,0 +1,1 @@
+<sdf version="1.8"><model name="bridge1"><static>true</static><pose>0 0 0 0 0 0</pose><link name="body"><visual name="visual"><geometry><mesh><uri>model://bridge1/meshes/bridge.stl</uri></mesh></geometry><material><ambient>0.55 0.59 0.66 1</ambient><diffuse>0.55 0.59 0.66 1</diffuse></material></visual></link></model></sdf>

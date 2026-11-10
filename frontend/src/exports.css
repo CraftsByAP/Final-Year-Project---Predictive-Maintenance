@@ -1,0 +1,77 @@
+.exportPanel > h2 {
+    color: #F5F1FC;
+}
+.exportPanel > p, .exportNote {
+    color: #ADA5BC;
+    line-height: 1.7;
+    font-size: 13px;
+}
+
+.exportPanel fieldset {
+    border: 1px solid #393044;
+    border-radius: 16px;
+    margin: 18px 0;
+    padding: 22px;
+    min-width: 0;
+    background: #1D1828;
+}
+.exportFilters { display: grid;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 16px;
+}
+.exportFilters label {
+    display: block;
+    font-size: 12px;
+    color: #C6AFF0;
+    margin-bottom: 8px;
+
+}
+.exportFilters input, .exportFilters select {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+}
+.exportPanel .primaryButton {
+    width: auto; }
+.exportPanel td {
+    max-width: 360px;
+    overflow-wrap: anywhere;
+    white-space: normal;
+
+}
+
+.exportActions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 18px 0;
+}
+.backupCard {
+    padding: 22px;
+    border: 1px solid #393044;
+    border-radius: 16px;
+    background: #1D1828;
+    margin: 16px 0;
+}
+.backupCard h3, .backupCard p { overflow-wrap: anywhere; }
+.backupCard h3 {
+    color: #F5F1FC;
+    font-size: 14px;
+}
+.backupCard p, .backupCard li {
+    color: #ADA5BC;
+    font-size: 12px;
+    line-height: 1.7;
+}
+.backupSuccess {
+    color: #80E5C7 !important;
+}
+@media(max-width:700px) {
+    .exportFilters {
+
+        grid-template-columns: minmax(0,1fr);
+    }
+
+
+}

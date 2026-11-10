@@ -1,0 +1,26 @@
+.idea/
+*.iml
+
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+node_modules/
+
+.env
+.env.*
+!.env.example
+
+data/
+backups/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+dist/
+
+# Generated Gazebo simulation logs
+/simulation/logs/
