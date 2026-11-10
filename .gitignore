@@ -21,3 +21,6 @@ backups/
 *.sqlite3
 
 dist/
+
+# Generated Gazebo simulation logs
+/simulation/logs/
