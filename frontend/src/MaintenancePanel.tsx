@@ -1,3 +1,4 @@
+import { dateHint, taskError } from "../../shared/validation";
 import { can } from "./types";
 import { useEffect, useState, type FormEvent } from "react";
 import type { Account } from "./types";
@@ -71,11 +72,15 @@ export function MaintenancePanel({ user, onSessionExpired }: Props) {
 
     async function submitTask(event: FormEvent<HTMLFormElement>) {
         event.preventDefault(); setError(""); setMessage("");
-        if (title.trim().length < 5 || title.trim().length > 120) { setError("Title must contain 5 to 120 characters."); return; }
-        if (assignedTo === "") { setError("Choose an employee."); return; }
-        const body = { title: title.trim(), description: description.trim(), bridgeId: bridgeId,
-            priority: priority, assignedTo: Number(assignedTo), dueDate: dueDate || null,
+        if (saving) return;
+        const body = { title: title, description: description, bridgeId: bridgeId,
+            priority: priority, assignedTo: Number(assignedTo), dueDate: dueDate === "" ? null : dueDate,
             status: status, version: editingTask?.version };
+        const validationError = taskError(body, editingTask !== null);
+        if (validationError !== null) { setError(validationError); return; }
+        if (!employees.some(function (employee) { return employee.userId === body.assignedTo; })) {
+            setError("Choose an active employee from the list."); return;
+        }
         let path = "/api/maintenance";
         let method = "POST";
         if (editingTask !== null) { path += "/" + editingTask.taskId; method = "PATCH"; }
@@ -106,7 +111,7 @@ export function MaintenancePanel({ user, onSessionExpired }: Props) {
         <div className="panelHeading"><div><h2>{isAdmin ? "Maintenance work queue" : "Your assigned maintenance tasks"}</h2><p>{isAdmin ? "All three bridges · urgent unfinished tasks first" : "Read-only access · contact an admin for status updates"}</p></div><button className="secondaryButton" disabled={loading || saving} onClick={async function () { setLoading(true); setError(""); try { await loadTasks(); } catch (error) { setError(errorMessage(error)); } finally { setLoading(false); } }}>Refresh tasks</button></div>
         {error && <div className="errorBanner" role="alert">{error}</div>}
         {message && <p className="taskSuccess" role="status">{message}</p>}
-        {isAdmin && <form className="taskForm" onSubmit={submitTask}>
+        {isAdmin && <form className="taskForm" noValidate onSubmit={submitTask}>
             <h3>{editingTask === null ? "Create a maintenance task" : "Edit task #" + editingTask.taskId}</h3>
             <fieldset disabled={saving || loading || csrfToken === ""}>
                 <label htmlFor="taskTitle">Task title</label><input id="taskTitle" required minLength={5} maxLength={120} value={title} onChange={function (event) { setTitle(event.target.value); }} placeholder="Inspect the bridge deck" />
@@ -115,7 +120,7 @@ export function MaintenancePanel({ user, onSessionExpired }: Props) {
                     <div><label htmlFor="taskBridge">Bridge</label><select id="taskBridge" value={bridgeId} onChange={function (event) { setBridgeId(event.target.value); }}><option value="bridge1">Bridge 1</option><option value="bridge2">Bridge 2</option><option value="bridge3">Bridge 3</option></select></div>
                     <div><label htmlFor="taskPriority">Priority</label><select id="taskPriority" value={priority} onChange={function (event) { setPriority(event.target.value); }}><option>Low</option><option>Medium</option><option>High</option><option>Critical</option></select></div>
                     <div><label htmlFor="taskEmployee">Assigned employee</label><select id="taskEmployee" value={assignedTo} required onChange={function (event) { setAssignedTo(event.target.value); }}><option value="">Choose an employee</option>{employeeOptions}</select></div>
-                    <div><label htmlFor="taskDueDate">Due date (optional)</label><input id="taskDueDate" type="date" value={dueDate} onChange={function (event) { setDueDate(event.target.value); }} /></div>
+                    <div><label htmlFor="taskDueDate">Due date (optional)</label><input id="taskDueDate" aria-describedby="taskDueDateHint" type="text" placeholder="YYYY-MM-DD" value={dueDate} onChange={function (event) { setDueDate(event.target.value); }} /><small id="taskDueDateHint">{dateHint}</small></div>
                     {editingTask !== null && <div><label htmlFor="taskStatus">Status</label><select id="taskStatus" value={status} onChange={function (event) { setStatus(event.target.value); }}><option>{editingTask.status}</option>{editingTask.status === "Open" && <option>In progress</option>}{editingTask.status === "In progress" && <option>Completed</option>}</select></div>}
                 </div>
                 <p className="analysisSmall">Status workflow: Open → In progress → Completed. Tasks are manually reviewed by admins; creating one does not certify bridge safety.</p>

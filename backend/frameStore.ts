@@ -1,3 +1,4 @@
+import { bridgeIds } from "../shared/validation";
 import { Database } from "bun:sqlite";
 
 export function validateFrame(frame: any): string | null {
@@ -6,7 +7,7 @@ export function validateFrame(frame: any): string | null {
         typeof frame !== "object" ||
         Array.isArray(frame)
     ) {
-        return "Rrame must be a JSON object";
+        return "Frame must be a JSON object";
     }
 
     if (
@@ -17,12 +18,8 @@ export function validateFrame(frame: any): string | null {
         return "runId must have 1 - 100 Characters";
     }
 
-    if (
-        typeof frame.bridgeId !== "string" ||
-        frame.bridgeId.trim() === "" ||
-        frame.bridgeId.length > 100
-    ) {
-        return "bridgeId must have 1- 100 characters";
+    if (!bridgeIds.includes(frame.bridgeId)) {
+        return "Choose bridge1, bridge2 or bridge3";
     }
 
     if (

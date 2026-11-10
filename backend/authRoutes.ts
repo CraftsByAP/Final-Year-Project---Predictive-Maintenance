@@ -1,3 +1,4 @@
+import { isJsonRequest, loginError, validOtp } from "../shared/validation";
 import { Database } from "bun:sqlite";
 import { checkCredentials } from "./authentication";
 import { createEmailCodeTable, sendLoginCode, verifyLoginCode } from "./emailCodes";
@@ -60,8 +61,7 @@ function takeAttempt(database: Database, limitKey: string, maximum: number) {
 }
 
 async function readJson(request: Request) {
-    const contentType = request.headers.get("Content-Type");
-    if (contentType === null || !contentType.startsWith("application/json")) {
+    if (!isJsonRequest(request)) {
         return null;
     }
     try {
@@ -95,15 +95,8 @@ export async function handleAuthRequest(
         }
 
         const body = await readJson(request);
-        if (
-            body === null ||
-            typeof body.username !== "string" ||
-            typeof body.password !== "string" ||
-            body.username.trim() === "" || body.username.length > 100 ||
-            body.password === "" || body.password.length > 128
-        ) {
-            return Response.json({ error: "Enter a username and password with the correct format" }, { status: 400 });
-        }
+        const validationError = loginError(body?.username, body?.password);
+        if (validationError !== null) return Response.json({ error: validationError }, { status: 400 });
 
         const username = body.username.trim();
         if (!takeAttempt(database, "login-user:" + username.toLowerCase(), 10)) {
@@ -137,7 +130,7 @@ export async function handleAuthRequest(
 
     if (path === "/api/auth/verify" && request.method === "POST") {
         if (!takeAttempt(database, "verify-ip:" + clientIp, 30)) {
-            return Response.json({ error: "Too many verification requests. Try again after 15 minuttes" }, { status: 429 });
+            return Response.json({ error: "Too many verification requests. Try again after 15 minutes" }, { status: 429 });
         }
 
         const body = await readJson(request);
@@ -145,8 +138,7 @@ export async function handleAuthRequest(
             body === null ||
             typeof body.codeId !== "string" ||
             !/^[a-f0-9]{64}$/.test(body.codeId) ||
-            typeof body.code !== "string" ||
-            !/^\d{6}$/.test(body.code)
+            !validOtp(body.code)
         ) {
             return Response.json({ error: "Provide the login challenge and six-digit code" }, { status: 400 });
         }

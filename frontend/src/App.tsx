@@ -1,3 +1,4 @@
+import { loginError, validOtp } from "../../shared/validation";
 import { useEffect, useState, type FormEvent } from "react";
 import { LoadingState, LoadingSpinner } from "./LoadingState";
 import { AuthLayout } from "./AuthLayout";
@@ -79,8 +80,9 @@ export function App() {
         event.preventDefault();
         setError("");
 
-        if (username.trim() === "" || password === "") {
-            setError("Enter your username and password.");
+        const validationError = loginError(username, password);
+        if (validationError !== null) {
+            setError(validationError);
             return;
         }
 
@@ -112,7 +114,7 @@ export function App() {
         event.preventDefault();
         setError("");
 
-        if (!/^\d{6}$/.test(code.trim())) {
+        if (!validOtp(code.trim())) {
             setError("Enter the six-digit code from your email.");
             return;
         }
@@ -208,7 +210,7 @@ export function App() {
                     {error !== "" && <div className="errorBanner" role="alert">{error}</div>}
 
                     {screen === "password" ? (
-                        <form onSubmit={submitPassword} aria-busy={busy}>
+                        <form noValidate onSubmit={submitPassword} aria-busy={busy}>
                             <label htmlFor="username">Username</label>
                             <input
                                 id="username" name="username" type="text"
@@ -235,7 +237,7 @@ export function App() {
                             <p className="formNote">Need an account or help signing in? Contact your system administrator.</p>
                         </form>
                     ) : (
-                        <form onSubmit={submitCode} aria-busy={busy}>
+                        <form noValidate onSubmit={submitCode} aria-busy={busy}>
                             <div className="accountContext">Signing in as <strong>{username}</strong></div>
                             <label htmlFor="code">Verification code</label>
                             <input
@@ -270,4 +272,5 @@ export function App() {
 }
 
 export default App;
+
 

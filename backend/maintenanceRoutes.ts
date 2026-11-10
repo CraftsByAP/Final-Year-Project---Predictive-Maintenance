@@ -1,3 +1,4 @@
+import { taskError, positiveId, isJsonRequest } from "../shared/validation";
 import { hasPermission } from "./permissions";
 import { Database } from "bun:sqlite";
 import { getSessionUser, hasValidCsrf } from "./sessions";
@@ -36,25 +37,6 @@ function errorResponse(message: string, status = 400) {
     return Response.json({ error: message }, { status: status });
 }
 
-function validateTask(body: any, editing: boolean): string | null {
-    if (body === null || typeof body !== "object" || Array.isArray(body)) return "Send a task object.";
-    if (typeof body.title !== "string" || body.title.trim().length < 5 || body.title.trim().length > 120) return "Title must contain 5 to 120 characters.";
-    if (typeof body.description !== "string" || body.description.trim().length > 2000) return "Description must contain at most 2000 characters.";
-    if (!["bridge1", "bridge2", "bridge3"].includes(body.bridgeId)) return "Choose a valid bridge.";
-    if (!["Low", "Medium", "High", "Critical"].includes(body.priority)) return "Choose a valid priority.";
-    if (!Number.isSafeInteger(body.assignedTo) || body.assignedTo < 1) return "Choose an employee.";
-    if (body.dueDate !== null) {
-        if (typeof body.dueDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(body.dueDate)) return "Due date must be YYYY-MM-DD or empty.";
-        const date = new Date(body.dueDate + "T00:00:00Z");
-        if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== body.dueDate) return "Choose a real calendar date.";
-    }
-    if (editing) {
-        if (!["Open", "In progress", "Completed"].includes(body.status)) return "Choose a valid task status.";
-        if (!Number.isSafeInteger(body.version) || body.version < 1) return "Task version is required. Refresh and try again.";
-    }
-    return null;
-}
-
 type ExistingTask = { taskId: number; status: string; version: number };
 
 export async function handleMaintenanceRequest(database: Database, request: Request) {
@@ -87,32 +69,23 @@ export async function handleMaintenanceRequest(database: Database, request: Requ
         return Response.json({ tasks: tasks });
     }
 
-    if (!isAdmin)
-        return errorResponse("Employees have read-only access", 403);
-    if (request.method !== "POST" && request.method !== "PATCH")
-        return errorResponse("Action not available", 405);
-    if (!hasValidCsrf(request, user))
-        return errorResponse("Invalid request token", 403);
+    if (!isAdmin) return errorResponse("Employees have read-only access", 403);
+    if (request.method !== "POST" && request.method !== "PATCH") return errorResponse("Action not available", 405);
+    if (!hasValidCsrf(request, user)) return errorResponse("Invalid request token", 403);
 
     const creating = path === "/api/maintenance" && request.method === "POST";
     const match = /^\/api\/maintenance\/([1-9]\d*)$/.exec(path);
     const editing = match !== null && request.method === "PATCH";
-    if (!creating && !editing)
-        return errorResponse("Task endpoint not found", 404);
-    if (!request.headers.get("Content-Type")?.startsWith("application/json"))
-        return errorResponse("Send application/json", 415);
+    if (!creating && !editing) return errorResponse("Task endpoint not found", 404);
+    if (!isJsonRequest(request)) return errorResponse("Send application/json", 415);
     let body;
-    try { body = await request.json(); }
-    catch {
-        return errorResponse("Invalid JSON");
-    }
-    const validationError = validateTask(body, editing);
-    if (validationError !== null)
-        return errorResponse(validationError);
+    try { body = await request.json(); } catch { return errorResponse("Invalid JSON"); }
+    if (body === null || typeof body !== "object" || Array.isArray(body)) return errorResponse("Send a task object.");
+    const validationError = taskError(body, editing);
+    if (validationError !== null) return errorResponse(validationError);
 
     const employee = database.query("SELECT userId FROM users WHERE userId = ? AND role IN (SELECT roleName FROM rolePermissions WHERE permission = 'maintenance.assign') AND isActive = 1 AND emailVerifiedAt IS NOT NULL").get(body.assignedTo);
-    if (employee === null)
-        return errorResponse("Assign the task to an active employee.");
+    if (employee === null) return errorResponse("Assign the task to an active employee.");
     const now = new Date().toISOString();
 
     if (creating) {
@@ -129,18 +102,16 @@ export async function handleMaintenanceRequest(database: Database, request: Requ
     }
 
     const taskId = Number(match![1]);
+    if (!positiveId(taskId)) return errorResponse("Invalid task ID.");
     const updateTask = database.transaction(function () {
         const previous = database.query("SELECT taskId,status,version FROM maintenanceTasks WHERE taskId = ?").get(taskId) as ExistingTask | null;
-        if (previous === null)
-            return errorResponse("Task not found", 404);
-        if (previous.version !== body.version)
-            return errorResponse("Another admin changed this task. Refresh before editing again.", 409);
+        if (previous === null) return errorResponse("Task not found", 404);
+        if (previous.version !== body.version) return errorResponse("Another admin changed this task. Refresh before editing again.", 409);
         // Follow the workflow; completed work is kept as a record.
         if (body.status !== previous.status) {
             const advancing = previous.status === "Open" && body.status === "In progress";
             const completing = previous.status === "In progress" && body.status === "Completed";
-            if (!advancing && !completing)
-                return errorResponse("Move from Open to In progress, then Completed.");
+            if (!advancing && !completing) return errorResponse("Move from Open to In progress, then Completed.");
         }
         database.query(`UPDATE maintenanceTasks SET bridgeId=?,title=?,description=?,priority=?,status=?,assignedTo=?,dueDate=?,version=version+1,updatedAt=? WHERE taskId=?`).run(body.bridgeId, body.title.trim(), body.description.trim(), body.priority, body.status, body.assignedTo, body.dueDate, now, taskId);
         database.query("INSERT INTO maintenanceEvents(taskId,actorId,action,oldStatus,newStatus,recordedAt) VALUES(?,?,'Updated',?,?,?)").run(taskId, user.userId, previous.status, body.status, now);

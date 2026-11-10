@@ -1,3 +1,4 @@
+import { validName, nameHint, validEmail, validNewPassword, passwordHint } from "../../shared/validation";
 import { useEffect, useState } from "react";
 import { requestApi, errorMessage } from "./apiClient";
 import { type Account, can } from "./types";
@@ -38,29 +39,18 @@ export function AccountsPanel({ user, onSessionExpired }: Props) {
 
     async function load() {
         const session = await requestApi("/api/auth/me");
-        if (session.status === 401) {
-            onSessionExpired();
-            return;
-        }
-        if (!session.ok)
-            throw new Error("Session could not be checked");
+        if (session.status === 401) { onSessionExpired(); return; }
+        if (!session.ok) throw new Error("Session could not be checked");
         setCsrfToken(session.data.user.csrfToken);
         const roleResult = await requestApi("/api/admin/roles");
-        if (roleResult.status === 401) {
-            onSessionExpired();
-            return;
-        }
+        if (roleResult.status === 401) { onSessionExpired(); return; }
         if (!roleResult.ok) throw new Error(roleResult.data.error);
         setRoles(roleResult.data.roles);
         setPermissionNames(roleResult.data.permissions);
         if (can(user, "accounts.manage")) {
             const result = await requestApi("/api/admin/users");
-            if (result.status === 401) {
-                onSessionExpired();
-                return;
-            }
-            if (!result.ok)
-                throw new Error(result.data.error);
+            if (result.status === 401) { onSessionExpired(); return; }
+            if (!result.ok) throw new Error(result.data.error);
             setUsers(result.data.users);
         }
     }
@@ -71,19 +61,17 @@ export function AccountsPanel({ user, onSessionExpired }: Props) {
     }, []);
 
     function clearUser() {
-        setEditingUser(null);
-        setUsername("");
-        setEmail("");
-        setPassword("");
-        setRole("");
-        setIsActive(true);
+        setEditingUser(null); setUsername(""); setEmail(""); setPassword(""); setRole(""); setIsActive(true);
     }
 
     async function saveUser(event: React.FormEvent) {
-        event.preventDefault();
+        event.preventDefault(); setError(""); setMessage("");
+        if (busy) return;
+        if (!validName(username.trim())) { setError("Username: " + nameHint); return; }
+        if (!validEmail(email.trim())) { setError("Enter a correctly formatted email address."); return; }
+        if ((!editingUser || password !== "") && !validNewPassword(password)) { setError(passwordHint); return; }
+        if (!roles.some(function (choice) { return choice.roleName === role; })) { setError("Choose an existing role."); return; }
         setBusy(true);
-        setError("");
-        setMessage("");
         try {
             let path = "/api/admin/users";
             let method = "POST";
@@ -92,52 +80,35 @@ export function AccountsPanel({ user, onSessionExpired }: Props) {
                 username: username.trim(), email: email.trim(), password: password,
                 role: role, isActive: isActive, version: editingUser?.version
             }, csrfToken);
-            if (result.status === 401) {
-                onSessionExpired();
-                return;
-            }
-            if (!result.ok)
-                throw new Error(result.data.error);
-            setMessage(result.data.message);
-            clearUser();
-            await load();
-        } catch (error) {
-            setError(errorMessage(error));
-        }
-        finally { setBusy(false);
-        }
+            if (result.status === 401) { onSessionExpired(); return; }
+            if (!result.ok) throw new Error(result.data.error);
+            setMessage(result.data.message); clearUser(); await load();
+        } catch (error) { setError(errorMessage(error)); }
+        finally { setBusy(false); }
     }
 
     async function saveRole(event: React.FormEvent) {
-        event.preventDefault(); setBusy(true); setError(""); setMessage("");
+        event.preventDefault(); setError(""); setMessage("");
+        if (busy) return;
+        if (!editingRole && !validName(roleName)) { setError("Role name: " + nameHint); return; }
+        if (chosenPermissions.some(function (permission) { return !permissionNames.includes(permission); })) {
+            setError("Choose permissions from the list."); return;
+        }
+        setBusy(true);
         try {
             let path = "/api/admin/roles";
             let method = "POST";
-            if (editingRole !== null) {
-
-                path += "/" + encodeURIComponent(editingRole.roleName); method = "PATCH";
-            }
+            if (editingRole !== null) { path += "/" + encodeURIComponent(editingRole.roleName); method = "PATCH"; }
             const result = await requestApi(path, method, {
                 roleName: roleName, permissions: chosenPermissions, version: editingRole?.version
             }, csrfToken);
-            if (result.status === 401) {
-                onSessionExpired();
-                return;
-            }
-            if (!result.ok)
-                throw new Error(result.data.error);
-            if (result.data.signInAgain) {
-                onSessionExpired();
-                return;
-            }
+            if (result.status === 401) { onSessionExpired(); return; }
+            if (!result.ok) throw new Error(result.data.error);
+            if (result.data.signInAgain) { onSessionExpired(); return; }
             setMessage("Role saved. People using a changed role must sign in again.");
             setRoleName(""); setChosenPermissions([]); setEditingRole(null); await load();
-        } catch (error) {
-            setError(errorMessage(error));
-        }
-        finally {
-            setBusy(false);
-        }
+        } catch (error) { setError(errorMessage(error)); }
+        finally { setBusy(false); }
     }
 
     const roleOptions = [];
@@ -154,8 +125,7 @@ export function AccountsPanel({ user, onSessionExpired }: Props) {
     const userRows = [];
     for (const account of users) {
         let status = "Awaiting email verification";
-        if (account.isActive === 0)
-            status = "Disabled";
+        if (account.isActive === 0) status = "Disabled";
         else if (account.emailVerifiedAt !== null) status = "Active · email verified";
         userRows.push(<tr key={account.userId}><td>{account.username}</td><td>{account.role}</td><td>{account.email}</td><td>{status}</td><td>
             <button className="secondaryButton" disabled={busy || account.userId === user.userId} onClick={function () {
@@ -177,14 +147,14 @@ export function AccountsPanel({ user, onSessionExpired }: Props) {
     return <section className="accountsPanel">
         {error && <div className="errorBanner" role="alert">{error}</div>}
         {message && <p className="taskSuccess" role="status">{message}</p>}
-
+        <p>Accounts are invited by a manager. New email addresses must complete a password and email OTP login before dashboard access. Disable a person who leaves; their task history stays in the system.</p>
         {can(user, "accounts.manage") && <>
-            <form className="dataPanel accountForm" onSubmit={saveUser}>
+            <form className="dataPanel accountForm" noValidate onSubmit={saveUser}>
                 <h2>{editingUser ? "Edit account" : "Create an account"}</h2>
                 <fieldset disabled={busy || !csrfToken}>
-                    <label>Username<input required pattern="[A-Za-z][A-Za-z0-9_-]{2,39}" minLength={3} maxLength={40} value={username} onChange={function (event) { setUsername(event.target.value); }} /></label>
-                    <label>Email address<input required type="email" maxLength={254} value={email} onChange={function (event) { setEmail(event.target.value); }} /></label>
-                    <label>{editingUser ? "New password (leave empty to keep current password)" : "Password (12–128 characters)"}<input required={!editingUser} type="password" autoComplete="new-password" minLength={12} maxLength={128} value={password} onChange={function (event) { setPassword(event.target.value); }} /></label>
+                    <div><label>Username<input required minLength={3} maxLength={40} value={username} onChange={function (event) { setUsername(event.target.value); }} aria-describedby="accountUsernameHint" /></label><small id="accountUsernameHint">{nameHint}</small></div>
+                    <div><label>Email address<input required type="email" maxLength={254} value={email} onChange={function (event) { setEmail(event.target.value); }} aria-describedby="accountEmailHint" /></label><small id="accountEmailHint">Use an inbox the account holder can access for their login code.</small></div>
+                    <div><label>{editingUser ? "New password (leave empty to keep current password)" : "Password (12–128 characters)"}<input required={!editingUser} type="password" autoComplete="new-password" minLength={12} maxLength={128} value={password} onChange={function (event) { setPassword(event.target.value); }} aria-describedby="accountPasswordHint" /></label><small id="accountPasswordHint">{passwordHint}</small></div>
                     <label>Role<select required value={role} onChange={function (event) { setRole(event.target.value); }}><option value="">Choose a role</option>{roleOptions}</select></label>
                     <label className="permissionChoice"><input type="checkbox" checked={isActive} onChange={function (event) { setIsActive(event.target.checked); }} />Enabled (email verification still required)</label>
                     <button className="secondaryButton" type="submit">{busy ? "Saving…" : "Save account"}</button>
@@ -194,11 +164,11 @@ export function AccountsPanel({ user, onSessionExpired }: Props) {
             <div className="dataPanel tableScroll"><table><thead><tr><th>Username</th><th>Role</th><th>Email</th><th>Status</th><th>Action</th></tr></thead><tbody>{userRows}</tbody></table></div>
         </>}
         {can(user, "roles.manage") && <>
-            <form className="dataPanel accountForm" onSubmit={saveRole}>
+            <form className="dataPanel accountForm" noValidate onSubmit={saveRole}>
                 <h2>{editingRole ? "Edit role permissions" : "Create a role"}</h2>
                 <p>Management permissions grant broad access. Choose only what this role needs.</p>
                 <fieldset disabled={busy || !csrfToken}>
-                    <label>Role name<input required disabled={editingRole !== null} pattern="[A-Za-z][A-Za-z0-9_-]{2,39}" minLength={3} maxLength={40} value={roleName} onChange={function (event) { setRoleName(event.target.value); }} /></label>
+                    <div><label>Role name<input required disabled={editingRole !== null} minLength={3} maxLength={40} value={roleName} onChange={function (event) { setRoleName(event.target.value); }} aria-describedby="roleNameHint" /></label><small id="roleNameHint">{nameHint}</small></div>
                     {permissionBoxes}
                     <button className="secondaryButton" type="submit">Save role</button>
                     {editingRole && <button className="secondaryButton" type="button" onClick={function () { setEditingRole(null); setRoleName(""); setChosenPermissions([]); }}>Cancel edit</button>}

@@ -1,15 +1,9 @@
+import { dateRangeError, reportKinds, bridgeIds } from "../shared/validation";
 import { hasPermission } from "./permissions";
 import { Database } from "bun:sqlite";
 import { getSessionUser } from "./sessions";
 
 type Row = Record<string, string | number | null>;
-
-function validDate(value: string) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(value))
-        return false;
-    const date = new Date(value + "T00:00:00Z");
-    return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
-}
 
 export function csvCell(value: string | number | null) {
     if (value === null) return '""';
@@ -29,16 +23,17 @@ export async function handleReportRequest(database: Database, request: Request) 
         return Response.json({ error: "Admin access required" }, { status: 403 });
     if (request.method !== "GET")
         return Response.json({ error: "Use GET for reports" }, { status: 405 });
-    const kind = url.searchParams.get("type") || "readings";
-    const bridgeId = url.searchParams.get("bridgeId") || "all";
+    const kind = url.searchParams.get("type") ?? "readings";
+    const bridgeId = url.searchParams.get("bridgeId") ?? "all";
     const from = url.searchParams.get("from") || "";
     const to = url.searchParams.get("to") || "";
-    const format = url.searchParams.get("format") || "json";
-    if (!["readings", "anomalies", "forecasts", "maintenance"].includes(kind))
+    const format = url.searchParams.get("format") ?? "json";
+    if (!reportKinds.includes(kind))
         return Response.json({ error: "Unknown report type" }, { status: 400 });
-    if (!["all", "bridge1", "bridge2", "bridge3"].includes(bridgeId))
+    if (!(bridgeId === "all" || bridgeIds.includes(bridgeId)))
         return Response.json({ error: "Choose a valid bridge" }, { status: 400 });
-    if ((from !== "" && !validDate(from)) || (to !== "" && !validDate(to)) || (from !== "" && to !== "" && from > to)) return Response.json({ error: "Enter valid dates with From on or before To" }, { status: 400 });
+    const dateError = dateRangeError(from, to);
+    if (dateError !== null) return Response.json({ error: dateError }, { status: 400 });
     if (format !== "json" && format !== "csv")
         return Response.json({ error: "Choose JSON preview or CSV download" }, { status: 400 });
 

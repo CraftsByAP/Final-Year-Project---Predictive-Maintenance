@@ -1,3 +1,4 @@
+import { bridgeIds, isJsonRequest } from "../shared/validation";
 import { limitRequestBody, maxServerBodyBytes } from "./requestSize";
 import { accountsReady } from "./migrateAccounts";
 import { handleAccountRequest } from "./accountRoutes";
@@ -56,8 +57,7 @@ async function routeRequest(request: Request, clientIp: string) {
             return Response.json({ error: "Worker access denied" }, { status: 401 });
         }
 
-        const contentType = request.headers.get("Content-Type");
-        if (contentType === null || !contentType.startsWith("application/json")) {
+        if (!isJsonRequest(request)) {
             return Response.json({ error: "Send the frame as application/json" }, { status: 415 });
         }
 
@@ -115,8 +115,8 @@ async function routeRequest(request: Request, clientIp: string) {
         if (bridgeId === null) {
             bridgeId = "bridge1";
         }
-        if (bridgeId.trim() === "" || bridgeId.length > 100) {
-            return Response.json({ error: "bridgeId must contain 1 to 100 characters" }, { status: 400 });
+        if (!bridgeIds.includes(bridgeId)) {
+            return Response.json({ error: "Choose bridge1, bridge2 or bridge3" }, { status: 400 });
         }
 
         let limitText = requestUrl.searchParams.get("limit");
@@ -124,7 +124,7 @@ async function routeRequest(request: Request, clientIp: string) {
             limitText = "60";
         }
         const limit = Number(limitText);
-        if (!Number.isInteger(limit) || limit < 1 || limit > 1000) {
+        if (!/^\d{1,4}$/.test(limitText) || limit < 1 || limit > 1000) {
             return Response.json({ error: "limit must be a whole number from 1 to 1000" }, { status: 400 });
         }
 
@@ -163,7 +163,7 @@ async function routeRequest(request: Request, clientIp: string) {
 }
 
 const server = Bun.serve({
-    hostname: "0.0.0.0",
+    hostname: "127.0.0.1",
     port: Number(process.env.PORT || 3000),
     maxRequestBodySize: maxServerBodyBytes,
     idleTimeout: 60,

@@ -1,3 +1,4 @@
+import { validEmail, validName, nameHint, validNewPassword, passwordHint, positiveId, isJsonRequest } from "../shared/validation";
 import { Database } from "bun:sqlite";
 import { resolveMx, resolve4, resolve6 } from "node:dns/promises";
 import { getSessionUser, hasValidCsrf } from "./sessions";
@@ -10,18 +11,7 @@ function problem(message: string, status = 400) {
     return Response.json({ error: message }, { status: status });
 }
 
-export function validEmail(email: unknown): email is string {
-    if (typeof email !== "string" || email.length > 254) return false;
-    const pieces = email.split("@");
-    if (pieces.length !== 2 || pieces[0].length > 64) return false;
-    if (!/^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*$/i.test(pieces[0])) return false;
-    const labels = pieces[1].split(".");
-    if (labels.length < 2 || !/^[a-z]{2,63}$/i.test(labels[labels.length - 1])) return false;
-    for (const label of labels) {
-        if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i.test(label)) return false;
-    }
-    return true;
-}
+export { validEmail } from "../shared/validation";
 
 // DNS checks routing only. A successful email OTP proves access to the mailbox.
 export async function checkEmailDomain(email: string) {
@@ -100,7 +90,7 @@ export async function handleAccountRequest(
     }
     if (request.method !== "POST" && request.method !== "PATCH") return problem("Use GET, POST or PATCH", 405);
     if (!hasValidCsrf(request, user)) return problem("Invalid request token", 403);
-    if (!request.headers.get("Content-Type")?.startsWith("application/json")) return problem("Send application/json", 415);
+    if (!isJsonRequest(request)) return problem("Send application/json", 415);
     let body;
     try { body = await request.json(); } catch { return problem("Invalid JSON"); }
     if (body === null || typeof body !== "object" || Array.isArray(body)) return problem("Send a form object");
@@ -111,7 +101,8 @@ export async function handleAccountRequest(
         const match = /^\/api\/admin\/roles\/([A-Za-z][A-Za-z0-9_-]{2,39})$/.exec(path);
         if (!creating && !(match && request.method === "PATCH")) return problem("Role endpoint not found", 404);
         const roleName = creating ? body.roleName : match![1];
-        if (typeof roleName !== "string" || !/^[A-Za-z][A-Za-z0-9_-]{2,39}$/.test(roleName)) return problem("Role name: 3–40 letters, numbers, underscores or hyphens; start with a letter");
+        if (!validName(roleName)) return problem("Role name: " + nameHint);
+        if (!creating && !positiveId(body.version)) return problem("Refresh the role before editing it");
         const saveRole = database.transaction(function () {
             const existing = database.query("SELECT roleName,version FROM roles WHERE roleName = ?").get(roleName) as RoleRow | null;
             if (creating && existing !== null) return problem("Role name already exists", 409);
@@ -136,17 +127,18 @@ export async function handleAccountRequest(
     const creating = path === "/api/admin/users" && request.method === "POST";
     const match = /^\/api\/admin\/users\/([1-9]\d*)$/.exec(path);
     if (!creating && !(match && request.method === "PATCH")) return problem("Account endpoint not found", 404);
-    if (typeof body.username !== "string" || !/^[A-Za-z][A-Za-z0-9_-]{2,39}$/.test(body.username)) return problem("Username: 3–40 letters, numbers, underscores or hyphens; start with a letter");
+    if (!validName(body.username)) return problem("Username: " + nameHint);
     if (typeof body.email !== "string") return problem("Enter an email address");
     const email = body.email.trim().toLowerCase();
     if (!validEmail(email)) return problem("Enter a correctly formatted email address");
     if (typeof body.role !== "string" || database.query("SELECT roleName FROM roles WHERE roleName = ?").get(body.role) === null) return problem("Choose an existing role");
     if (typeof body.isActive !== "boolean") return problem("Choose active or disabled");
     const changingPassword = creating || (typeof body.password === "string" && body.password !== "");
-    if (changingPassword && (typeof body.password !== "string" || body.password.length < 12 || body.password.length > 128)) return problem("Password must contain 12–128 characters");
+    if (changingPassword && (!validNewPassword(body.password))) return problem(passwordHint);
     if (!creating && body.password !== undefined && typeof body.password !== "string") return problem("Password must be text");
     // Avoid slow DNS for an unchanged address.
     const userId = creating ? 0 : Number(match![1]);
+    if (!creating && (!positiveId(userId) || !positiveId(body.version))) return problem("Invalid account ID or version");
     const oldAddress = database.query("SELECT email FROM users WHERE userId = ?").get(userId) as { email: string } | null;
     if ((creating || oldAddress?.email !== email) && !await domainCheck(email)) return problem("Email domain could not be confirmed as accepting mail. Check spelling and your network");
     let passwordHash: string | null = null;

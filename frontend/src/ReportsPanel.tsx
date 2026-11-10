@@ -1,3 +1,4 @@
+import { dateHint, dateRangeError } from "../../shared/validation";
 import { useState, type FormEvent } from "react";
 import { requestApi, errorMessage } from "./apiClient";
 import { downloadFile } from "./fileDownload";
@@ -19,7 +20,11 @@ export function ReportsPanel({ onSessionExpired }: { onSessionExpired: () => voi
     }
 
     async function preview(event: FormEvent<HTMLFormElement>) {
-        event.preventDefault(); setBusy(true); setError(""); setReport(null);
+        event.preventDefault(); setError(""); setReport(null);
+        if (busy) return;
+        const validationError = dateRangeError(from, to);
+        if (validationError !== null) { setError(validationError); return; }
+        setBusy(true);
         try {
             const result = await requestApi(reportUrl("json"));
             if (result.status === 401) { onSessionExpired(); return; }
@@ -41,13 +46,14 @@ export function ReportsPanel({ onSessionExpired }: { onSessionExpired: () => voi
     }
 
     return <section className="exportPanel" aria-label="Report exports">
-        <h2>Reports</h2><p>Four reports from saved data. Date filters use recorded dates in UTC, not simulated hours.</p>
-        <form onSubmit={preview} onChange={function () { setReport(null); }}>
+        <h2>Reports</h2><p>Four reports from saved data. Dates are optional and use UTC. Choose a From date on or before the To date.</p>
+        <p id="reportDateHint">{dateHint}</p>
+        <form noValidate onSubmit={preview} onChange={function () { setReport(null); setError(""); }}>
             <fieldset disabled={busy}><div className="exportFilters">
                 <div><label htmlFor="reportKind">Report type</label><select id="reportKind" value={kind} onChange={function (event) { setKind(event.target.value); }}><option value="readings">Sensor readings</option><option value="anomalies">Anomaly detections</option><option value="forecasts">Threshold forecasts</option><option value="maintenance">Maintenance tasks</option></select></div>
                 <div><label htmlFor="reportBridge">Bridge</label><select id="reportBridge" value={bridgeId} onChange={function (event) { setBridgeId(event.target.value); }}><option value="all">All bridges</option><option value="bridge1">Bridge 1</option><option value="bridge2">Bridge 2</option><option value="bridge3">Bridge 3</option></select></div>
-                <div><label htmlFor="reportFrom">From (UTC)</label><input id="reportFrom" type="date" value={from} onChange={function (event) { setFrom(event.target.value); }} /></div>
-                <div><label htmlFor="reportTo">To (UTC)</label><input id="reportTo" type="date" value={to} onChange={function (event) { setTo(event.target.value); }} /></div>
+                <div><label htmlFor="reportFrom">From (UTC)</label><input id="reportFrom" aria-describedby="reportDateHint" type="text" placeholder="YYYY-MM-DD" value={from} onChange={function (event) { setFrom(event.target.value); }} /></div>
+                <div><label htmlFor="reportTo">To (UTC)</label><input id="reportTo" aria-describedby="reportDateHint" type="text" placeholder="YYYY-MM-DD" value={to} onChange={function (event) { setTo(event.target.value); }} /></div>
             </div><button className="primaryButton" type="submit">{busy ? "Working…" : "Generate preview"}</button></fieldset>
         </form>
         {error && <div className="errorBanner" role="alert">{error}</div>}

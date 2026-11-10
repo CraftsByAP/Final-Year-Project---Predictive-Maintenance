@@ -73,10 +73,11 @@ export function BackupsPanel({ onSessionExpired }: { onSessionExpired: () => voi
     }
 
     async function uploadCheck(event: React.FormEvent) {
-        event.preventDefault(); begin();
+        event.preventDefault(); if (busy) return; begin();
         try {
             if (chosenFile === null) throw new Error("Choose your downloaded InfraSight ZIP package.");
             if (!chosenFile.name.toLowerCase().endsWith(".zip")) throw new Error("Choose a ZIP package, not a database-only file.");
+            if (chosenFile.size === 0) throw new Error("That ZIP file is empty. Choose a complete backup package.");
             if (chosenFile.size > maxUploadBytes) throw new Error("Choose a package no larger than 32 MiB.");
             const response = await fetch("/api/backups/packages/check-upload", {
                 method: "POST", credentials: "same-origin", cache: "no-store",
